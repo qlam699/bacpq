@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   Filler,
+  type Plugin,
 } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Chart } from 'react-chartjs-2';
@@ -16,7 +17,28 @@ import 'chartjs-adapter-date-fns';
 import type { CtjTick } from '../lib/ctj';
 import type { Position } from '../lib/storage';
 import { calcPositionPnl } from '../lib/pnl';
-import { formatSignedVnd, formatVnd } from '../lib/format';
+import { formatSignedVnd, formatTime, formatVnd } from '../lib/format';
+
+/** Vertical guide while hovering along X (no need to hit a point). */
+const crosshairPlugin: Plugin = {
+  id: 'vnCrosshair',
+  afterDraw(chart) {
+    const active = chart.tooltip?.getActiveElements() ?? [];
+    if (active.length === 0) return;
+    const x = active[0].element.x;
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(28, 25, 20, 0.35)';
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
 
 ChartJS.register(
   CategoryScale,
@@ -28,6 +50,7 @@ ChartJS.register(
   Legend,
   Filler,
   annotationPlugin,
+  crosshairPlugin,
 );
 
 const LINE_COLORS = ['#c45c26', '#b45309', '#9a3412', '#a16207', '#c2410c'];
@@ -100,8 +123,8 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
   }));
 
   const pricePointRadius =
-    visibleTicks.length > 80 ? 2 : visibleTicks.length > 40 ? 3 : 4;
-  const priceHoverRadius = pricePointRadius + 3;
+    visibleTicks.length > 80 ? 2 : visibleTicks.length > 40 ? 3 : 3.5;
+  const priceHoverRadius = pricePointRadius + 2;
 
   const annotations = Object.fromEntries(
     positions.map((p, i) => {
@@ -140,9 +163,9 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
             position: 'end' as const,
             backgroundColor: color,
             color: '#fff',
-            font: { size: 11, family: 'IBM Plex Sans' },
-            padding: { x: 6, y: 3 },
-            borderRadius: 4,
+            font: { size: 9, family: 'IBM Plex Sans' },
+            padding: { x: 4, y: 2 },
+            borderRadius: 3,
           },
         },
       ];
@@ -153,38 +176,38 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
     datasets: [
       {
         type: 'line' as const,
-        label: 'Mua vào (shop)',
+        label: 'Mua vào',
         data: buyLine,
         borderColor: '#1a6b4a',
         backgroundColor: 'rgba(26, 107, 74, 0.08)',
         fill: true,
         tension: 0.15,
-        borderWidth: 2,
+        borderWidth: 1.5,
         pointStyle: 'circle' as const,
         pointRadius: pricePointRadius,
         pointHoverRadius: priceHoverRadius,
         pointBackgroundColor: 'rgba(26, 107, 74, 0.45)',
         pointBorderColor: '#1a6b4a',
-        pointBorderWidth: 1.5,
-        pointHitRadius: 8,
+        pointBorderWidth: 1,
+        pointHitRadius: 6,
       },
       {
         type: 'line' as const,
-        label: 'Bán ra (shop)',
+        label: 'Bán ra',
         data: sellLine,
         borderColor: '#8a4b2a',
         backgroundColor: 'transparent',
         fill: false,
         tension: 0.15,
-        borderWidth: 1.5,
+        borderWidth: 1.25,
         borderDash: [4, 4],
         pointStyle: 'circle' as const,
         pointRadius: pricePointRadius,
         pointHoverRadius: priceHoverRadius,
         pointBackgroundColor: 'rgba(138, 75, 42, 0.4)',
         pointBorderColor: '#8a4b2a',
-        pointBorderWidth: 1.5,
-        pointHitRadius: 8,
+        pointBorderWidth: 1,
+        pointHitRadius: 6,
       },
     ],
   };
@@ -192,15 +215,10 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
   return (
     <section className="panel chart-panel">
       <div className="panel__head row">
-        <div>
-          <h2>Biểu đồ trong ngày</h2>
-          <p className="muted">
-            Đường ngang cam = giá vốn mua · xem giá thị trường tới / qua mức đó
-          </p>
-        </div>
+        <h2>Biểu đồ</h2>
         <label className="chart-range">
-          Khoảng thời gian
           <select
+            aria-label="Khoảng thời gian"
             value={rangeHours == null ? 'day' : String(rangeHours)}
             onChange={(e) => {
               const v = e.target.value;
@@ -232,17 +250,41 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
             options={{
               responsive: true,
               maintainAspectRatio: false,
-              interaction: { mode: 'nearest', intersect: true, axis: 'xy' },
+              layout: { padding: 0 },
+              // Hover theo trục X: trên/dưới điểm vẫn hiện cả mua + bán
+              interaction: { mode: 'index', intersect: false, axis: 'x' },
               plugins: {
                 legend: {
                   position: 'top',
-                  labels: { boxWidth: 12, font: { family: 'IBM Plex Sans' } },
+                  labels: {
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    padding: 8,
+                    font: { family: 'IBM Plex Sans', size: 10 },
+                  },
                 },
                 annotation: {
                   annotations,
                 },
                 tooltip: {
+                  mode: 'index',
+                  intersect: false,
+                  backgroundColor: '#fffdf8',
+                  titleColor: '#1c1914',
+                  bodyColor: '#1c1914',
+                  borderColor: '#d9d0bf',
+                  borderWidth: 1,
+                  titleFont: { family: 'IBM Plex Sans', size: 11, weight: 600 },
+                  bodyFont: { family: 'IBM Plex Sans', size: 11 },
+                  padding: 10,
+                  displayColors: true,
+                  boxPadding: 4,
                   callbacks: {
+                    title(items) {
+                      const x = items[0]?.parsed?.x;
+                      if (x == null) return '';
+                      return formatTime(new Date(x).toISOString());
+                    },
                     label(ctx) {
                       const y = ctx.parsed.y;
                       if (y == null) return '';
@@ -259,7 +301,11 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
                     displayFormats: { minute: 'HH:mm', hour: 'HH:mm' },
                   },
                   grid: { color: 'rgba(0,0,0,0.05)' },
-                  ticks: { font: { family: 'IBM Plex Sans', size: 11 } },
+                  ticks: {
+                    maxRotation: 0,
+                    autoSkipPadding: 12,
+                    font: { family: 'IBM Plex Sans', size: 9 },
+                  },
                 },
                 y: {
                   min: yBounds?.min,
@@ -267,7 +313,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
                   grid: { color: 'rgba(0,0,0,0.06)' },
                   ticks: {
                     stepSize: Y_STEP,
-                    font: { family: 'IBM Plex Sans', size: 11 },
+                    font: { family: 'IBM Plex Sans', size: 9 },
                     callback: (v) =>
                       typeof v === 'number'
                         ? new Intl.NumberFormat('vi-VN').format(v)

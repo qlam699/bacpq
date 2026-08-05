@@ -24,7 +24,6 @@ export function PositionTable({
       <div className="panel__head row">
         <div>
           <h2>Danh mục</h2>
-          <p className="muted">PnL theo giá mua vào của shop (mark-to-market)</p>
         </div>
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onExport}>

@@ -1,20 +1,23 @@
-import { dayExtremes, type CtjTick } from '../lib/ctj';
+import { dayExtremes, PRODUCTS, type CtjTick, type ProductId } from '../lib/ctj';
 import { formatPct, formatSignedVnd, formatTime, formatVnd } from '../lib/format';
+import type { Settings } from '../lib/storage';
 
 type Props = {
   tick: CtjTick | null;
   ticks: CtjTick[];
   loading: boolean;
   error: string | null;
+  settings: Settings;
   onRefresh: () => void;
+  updateSettings: (path: Partial<Settings>) => void;
 };
 
-export function PriceHeader({ tick, ticks, loading, error, onRefresh }: Props) {
+export function PriceHeader({ tick, ticks, loading, error, settings, onRefresh, updateSettings }: Props) {
   if (error && !tick) {
     return (
       <header className="price-header error">
         <p>{error}</p>
-        <button type="button" onClick={onRefresh}>
+        <button type="button" className="btn" onClick={onRefresh}>
           Thử lại
         </button>
       </header>
@@ -32,19 +35,41 @@ export function PriceHeader({ tick, ticks, loading, error, onRefresh }: Props) {
   const buyUp = tick.change_buy >= 0;
   const sellUp = tick.change_sell >= 0;
   const extremes = dayExtremes(ticks);
+  const buyBase = tick.buyprice - tick.change_buy || tick.buyprice;
 
   return (
     <header className="price-header">
       <div className="price-header__top">
-        <div>
+        <div className="price-header__meta">
+          <label className="product-select">
+            Sản phẩm
+            <select
+              value={settings.productId}
+              onChange={(e) =>
+                updateSettings({ productId: e.target.value as ProductId })
+              }
+            >
+              {PRODUCTS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <p className="eyebrow">CTJ · {tick.id}</p>
           <h2>{tick.name}</h2>
           <p className="muted">
-            Cập nhật {formatTime(tick.last_update)} · {tick.UnitName}
-            {loading ? ' · đang làm mới…' : ''}
+            {formatTime(tick.last_update)}
+            {loading ? ' · …' : ''}
           </p>
         </div>
-        <button type="button" className="btn ghost" onClick={onRefresh} disabled={loading}>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={onRefresh}
+          disabled={loading}
+        >
           Làm mới
         </button>
       </div>
@@ -52,18 +77,22 @@ export function PriceHeader({ tick, ticks, loading, error, onRefresh }: Props) {
       <div className="price-cards">
         <div className="price-card">
           <span className="label">Mua vào</span>
-          <strong>{formatVnd(tick.buyprice)}</strong>
-          <span className={buyUp ? 'up' : 'down'}>
-            {formatSignedVnd(tick.change_buy)} ({formatPct((tick.change_buy / (tick.buyprice - tick.change_buy || tick.buyprice)) * 100)})
-          </span>
+          <p>
+            <strong>{formatVnd(tick.buyprice)}&nbsp;&nbsp;</strong>
+            <span className={`delta ${buyUp ? 'up' : 'down'}`}>
+              {formatSignedVnd(tick.change_buy)} (
+              {formatPct((tick.change_buy / buyBase) * 100)})
+            </span>
+          </p>
+
           {extremes ? (
             <div className="extremes">
               <p className="muted">
-                Min: {formatVnd(extremes.minBuy.buyprice)} -{' '}
+                Min <b>{formatVnd(extremes.minBuy.buyprice)}</b> ·{' '}
                 {formatTime(extremes.minBuy.last_update)}
               </p>
               <p className="muted">
-                Max: {formatVnd(extremes.maxBuy.buyprice)} -{' '}
+                Max <b>{formatVnd(extremes.maxBuy.buyprice)}</b> ·{' '}
                 {formatTime(extremes.maxBuy.last_update)}
               </p>
             </div>
@@ -71,18 +100,20 @@ export function PriceHeader({ tick, ticks, loading, error, onRefresh }: Props) {
         </div>
         <div className="price-card">
           <span className="label">Bán ra</span>
-          <strong>{formatVnd(tick.sellprice)}</strong>
-          <span className={sellUp ? 'up' : 'down'}>
-            {formatSignedVnd(tick.change_sell)}
-          </span>
+          <p>
+            <strong>{formatVnd(tick.sellprice)}&nbsp;&nbsp;</strong>
+            <span className={`delta ${sellUp ? 'up' : 'down'}`}>
+              {formatSignedVnd(tick.change_sell)}
+            </span>
+          </p>
           {extremes ? (
             <div className="extremes">
               <p className="muted">
-                Min: {formatVnd(extremes.minSell.sellprice)} -{' '}
+                Min <b>{formatVnd(extremes.minSell.sellprice)}</b> ·{' '}
                 {formatTime(extremes.minSell.last_update)}
               </p>
               <p className="muted">
-                Max: {formatVnd(extremes.maxSell.sellprice)} -{' '}
+                Max <b>{formatVnd(extremes.maxSell.sellprice)}</b> ·{' '}
                 {formatTime(extremes.maxSell.last_update)}
               </p>
             </div>
@@ -91,7 +122,7 @@ export function PriceHeader({ tick, ticks, loading, error, onRefresh }: Props) {
         <div className="price-card accent">
           <span className="label">Spread</span>
           <strong>{formatVnd(tick.sellprice - tick.buyprice)}</strong>
-          <span className="muted">bán − mua</span>
+          <span className="muted delta">bán − mua</span>
         </div>
       </div>
       {error ? <p className="inline-error">{error}</p> : null}

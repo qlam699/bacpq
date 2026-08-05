@@ -88,36 +88,33 @@ export function PriceHeader({
   return (
     <header className="price-header">
       <div className="price-header__top">
-        <div className="price-header__meta">
-          <label className="product-select">
-            Sản phẩm
-            <select
-              value={settings.productId}
-              onChange={(e) =>
-                updateSettings({ productId: e.target.value as ProductId })
-              }
-            >
-              {PRODUCTS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label className="product-select">
+          <span className="sr-only">Sản phẩm</span>
+          <select
+            value={settings.productId}
+            onChange={(e) =>
+              updateSettings({ productId: e.target.value as ProductId })
+            }
+          >
+            {PRODUCTS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <p className="eyebrow">CTJ · {tick.id}</p>
-          <h2>{tick.name}</h2>
-          <p className="muted">
-            {formatTime(tick.last_update)}
-            {loading ? ' · …' : ''}
-          </p>
-        </div>
+        <p className="muted price-header__time">
+          Mới nhất vào: {formatTime(tick.last_update)}
+          {loading ? ' · …' : ''}
+        </p>
+
         {actions}
       </div>
 
       <div className="price-cards">
         <div className="price-card">
-          <span className="label">Mua vào</span>
+          <span className="label">Shop Mua vào</span>
           <p>
             <strong>{formatVnd(tick.buyprice)}&nbsp;&nbsp;</strong>
             <span className={`delta ${buyUp ? 'up' : 'down'}`}>
@@ -140,7 +137,7 @@ export function PriceHeader({
           ) : null}
         </div>
         <div className="price-card">
-          <span className="label">Bán ra</span>
+          <span className="label">Shop Bán ra</span>
           <p>
             <strong>{formatVnd(tick.sellprice)}&nbsp;&nbsp;</strong>
             <span className={`delta ${sellUp ? 'up' : 'down'}`}>

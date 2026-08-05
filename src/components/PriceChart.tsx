@@ -178,7 +178,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
     datasets: [
       {
         type: 'line' as const,
-        label: 'Mua vào',
+        label: 'Shop Mua vào',
         data: buyLine,
         borderColor: '#1a6b4a',
         backgroundColor: 'rgba(26, 107, 74, 0.08)',
@@ -195,7 +195,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
       },
       {
         type: 'line' as const,
-        label: 'Bán ra',
+        label: 'Shop Bán ra',
         data: sellLine,
         borderColor: '#8a4b2a',
         backgroundColor: 'transparent',

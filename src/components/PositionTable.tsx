@@ -25,7 +25,7 @@ export function PositionTable({
     <section className="panel">
       <div className="panel__head row">
         <div>
-          <h2>Danh mục</h2>
+          <h2>Bạc đã mua</h2>
           {storageLabel ? (
             <p className="muted">Lưu trữ: {storageLabel}</p>
           ) : null}

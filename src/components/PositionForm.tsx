@@ -50,7 +50,7 @@ export function PositionForm({ productId, onAdd }: Props) {
   return (
     <section className="panel">
       <div className="panel__head">
-        <h2>Thêm bạc</h2>
+        <h2>Thêm bạc đã mua của bạn</h2>
       </div>
       <form className="position-form" onSubmit={handleSubmit}>
         <label>

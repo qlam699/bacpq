@@ -12,9 +12,9 @@ export type CtjTick = {
 };
 
 export const PRODUCTS: { id: ProductId; label: string }[] = [
-  { id: 'BPQ1L', label: 'Bạc miếng 1 lượng' },
-  { id: 'BPQ10L', label: 'Bạc thỏi 10 lượng' },
-  { id: 'BPQ1KG', label: 'Bạc thỏi 1 kg' },
+  { id: 'BPQ1L', label: '1L Bạc miếng Phú Quý 999 1 lượng' },
+  { id: 'BPQ10L', label: '10L Bạc thỏi Phú Quý 999 10 lượng' },
+  { id: 'BPQ1KG', label: '1KG Bạc thỏi Phú Quý 999 1 kg' },
 ];
 
 const BASE = 'https://prices.ctj.com.vn/today';

@@ -32,10 +32,12 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
-  min-width: 320px;
+  min-width: 0;
 }
 
 h1,
@@ -59,11 +61,16 @@ p {
 }
 
 .app {
-  width: min(1100px, calc(100% - 0.75rem));
+  width: min(1100px, 100%);
+  max-width: 100%;
   margin: 0 auto;
+  padding-inline: 0.375rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  box-sizing: border-box;
+  overflow-x: clip;
+  min-width: 0;
 }
 
 /* Toolbar + giá + chart: vừa một màn hình */
@@ -76,6 +83,8 @@ p {
   gap: 0.35rem;
   padding: 0.35rem 0 0.25rem;
   overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app__secondary {
@@ -83,6 +92,8 @@ p {
   flex-direction: column;
   gap: 0.5rem;
   padding-bottom: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toolbar {
@@ -119,18 +130,43 @@ p {
   flex-direction: row;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.7rem;
-  color: var(--muted);
-  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.product-select select,
+.product-select select {
+  max-width: 100%;
+  min-width: 0;
+  width: auto;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  line-height: 1.25;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .position-form input,
 .btn {
   font: inherit;
 }
 
-.product-select select,
 .position-form input,
 .chart-range select {
   border: 1px solid var(--line);
@@ -148,6 +184,8 @@ p {
   border-radius: 10px;
   box-shadow: var(--shadow);
   padding: 0.45rem 0.55rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .price-header {
@@ -161,17 +199,16 @@ p {
 
 .price-header__top {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
   align-items: center;
+  gap: 0.4rem 0.55rem;
+  min-width: 0;
 }
 
-.price-header__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.6rem;
-  min-width: 0;
+.price-header__time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .eyebrow {
@@ -299,7 +336,10 @@ p {
 .chart-wrap {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   position: relative;
+  overflow: hidden;
 }
 
 .chart-wrap > canvas,
@@ -309,14 +349,18 @@ p {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1.3fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .position-form {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .position-form label {
@@ -325,10 +369,36 @@ p {
   gap: 0.15rem;
   font-size: 0.75rem;
   color: var(--muted);
+  min-width: 0;
+}
+
+.position-form input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* datetime-local có min-width mặc định rất lớn trên mobile */
+.position-form input[type='datetime-local'] {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.position-form input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+.position-form input[type='datetime-local']::-webkit-datetime-edit {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .position-form button {
   grid-column: 1 / -1;
+  width: 100%;
 }
 
 .btn {
@@ -379,10 +449,13 @@ p {
 
 .table-scroll {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
+  max-width: none;
   border-collapse: collapse;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -436,6 +509,7 @@ th {
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .gh-auth {
@@ -557,7 +631,23 @@ code {
   .grid-2,
   .summary,
   .position-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app__primary {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .price-header__top:has(.product-select) {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.3rem 0.4rem;
+  }
+
+  .price-header__top > .header-actions {
+    margin-left: 0;
   }
 
   /* Giữ 3 cột giá trên mobile để không đẩy chart ra khỏi viewport */
@@ -574,11 +664,22 @@ code {
   }
 
   .product-select {
-    font-size: 0;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .product-select select {
-    font-size: 0.75rem;
+    width: 100%;
+    font-size: 0.85rem;
+  }
+
+  .header-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  .gh-auth__login {
+    display: none;
   }
 }
 
@@ -590,6 +691,18 @@ code {
 
   .price-header {
     padding: 0.3rem 0.4rem;
+  }
+
+  .price-header__top {
+    gap: 0.25rem 0.3rem;
+  }
+
+  .price-header__time {
+    font-size: 0.7rem;
+  }
+
+  .product-select select {
+    font-size: 0.8rem;
   }
 
   .price-cards {
@@ -624,5 +737,9 @@ code {
 
   .chart-panel .panel__head {
     margin-bottom: 0.15rem;
+  }
+
+  .header-actions .btn {
+    padding: 0.25rem 0.5rem;
   }
 }

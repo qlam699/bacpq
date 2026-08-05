@@ -431,6 +431,128 @@ th {
   padding: 0.15rem 0 0.35rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.gh-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gh-auth__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 9rem;
+}
+
+.gh-auth__avatar {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.gh-auth__login {
+  font-size: 0.7rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(28, 25, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal h2 {
+  font-size: 1.05rem;
+}
+
+.gh-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.gh-steps a {
+  color: var(--green);
+}
+
+.gh-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.gh-login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.gh-login-form input {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.sync-banner {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  background: #fff5f2;
+  border: 1px solid #e4b4ab;
+  border-radius: 8px;
+}
+
+code {
+  font-size: 0.85em;
+  background: var(--bg-2);
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+}
+
 @media (max-width: 860px) {
   .grid-2,
   .summary,

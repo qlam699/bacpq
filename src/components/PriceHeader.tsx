@@ -1,6 +1,8 @@
 import { dayExtremes, PRODUCTS, type CtjTick, type ProductId } from '../lib/ctj';
 import { formatPct, formatSignedVnd, formatTime, formatVnd } from '../lib/format';
+import type { GithubUser } from '../lib/githubAuth';
 import type { Settings } from '../lib/storage';
+import { GithubAuthControls } from './GithubAuthControls';
 
 type Props = {
   tick: CtjTick | null;
@@ -10,13 +12,56 @@ type Props = {
   settings: Settings;
   onRefresh: () => void;
   updateSettings: (path: Partial<Settings>) => void;
+  githubUser: GithubUser | null;
+  githubStorage?: 'local' | 'gist';
+  githubSyncing?: boolean;
+  onGithubLogin: (token: string) => Promise<void>;
+  onGithubLogout: () => void;
 };
 
-export function PriceHeader({ tick, ticks, loading, error, settings, onRefresh, updateSettings }: Props) {
+export function PriceHeader({
+  tick,
+  ticks,
+  loading,
+  error,
+  settings,
+  onRefresh,
+  updateSettings,
+  githubUser,
+  githubStorage,
+  githubSyncing,
+  onGithubLogin,
+  onGithubLogout,
+}: Props) {
+  const actions = (
+    <div className="header-actions">
+      <GithubAuthControls
+        user={githubUser}
+        storage={githubStorage}
+        syncing={githubSyncing}
+        onLogin={onGithubLogin}
+        onLogout={onGithubLogout}
+      />
+      {tick ? (
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          Làm mới
+        </button>
+      ) : null}
+    </div>
+  );
+
   if (error && !tick) {
     return (
       <header className="price-header error">
-        <p>{error}</p>
+        <div className="price-header__top">
+          <p>{error}</p>
+          {actions}
+        </div>
         <button type="button" className="btn" onClick={onRefresh}>
           Thử lại
         </button>
@@ -27,7 +72,10 @@ export function PriceHeader({ tick, ticks, loading, error, settings, onRefresh, 
   if (!tick) {
     return (
       <header className="price-header">
-        <p className="muted">{loading ? 'Đang tải giá…' : 'Chưa có dữ liệu'}</p>
+        <div className="price-header__top">
+          <p className="muted">{loading ? 'Đang tải giá…' : 'Chưa có dữ liệu'}</p>
+          {actions}
+        </div>
       </header>
     );
   }
@@ -64,14 +112,7 @@ export function PriceHeader({ tick, ticks, loading, error, settings, onRefresh, 
             {loading ? ' · …' : ''}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={onRefresh}
-          disabled={loading}
-        >
-          Làm mới
-        </button>
+        {actions}
       </div>
 
       <div className="price-cards">

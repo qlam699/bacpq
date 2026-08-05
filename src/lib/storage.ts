@@ -66,13 +66,18 @@ export function saveSettings(settings: Settings): void {
 }
 
 export function exportPositionsJson(positions: Position[]): string {
+  return serializePositions(positions);
+}
+
+export function serializePositions(positions: Position[]): string {
   return JSON.stringify(positions, null, 2);
 }
 
-export function importPositionsJson(raw: string): Position[] {
+/** Parse JSON positions — không ghi storage. */
+export function parsePositionsJson(raw: string): Position[] {
   const parsed = JSON.parse(raw) as unknown;
   if (!Array.isArray(parsed)) throw new Error('JSON phải là mảng positions');
-  const positions: Position[] = parsed.map((item, i) => {
+  return parsed.map((item, i) => {
     const p = item as Partial<Position>;
     if (
       typeof p.buyPrice !== 'number' ||
@@ -90,6 +95,10 @@ export function importPositionsJson(raw: string): Position[] {
       note: p.note,
     };
   });
+}
+
+export function importPositionsJson(raw: string): Position[] {
+  const positions = parsePositionsJson(raw);
   savePositions(positions);
   return positions;
 }

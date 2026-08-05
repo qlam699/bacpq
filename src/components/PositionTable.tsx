@@ -8,6 +8,7 @@ type Props = {
   onRemove: (id: string) => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  storageLabel?: string;
 };
 
 export function PositionTable({
@@ -16,6 +17,7 @@ export function PositionTable({
   onRemove,
   onExport,
   onImport,
+  storageLabel,
 }: Props) {
   const stats = portfolioStats(positions, currentBuy);
 
@@ -24,6 +26,9 @@ export function PositionTable({
       <div className="panel__head row">
         <div>
           <h2>Danh mục</h2>
+          {storageLabel ? (
+            <p className="muted">Lưu trữ: {storageLabel}</p>
+          ) : null}
         </div>
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onExport}>

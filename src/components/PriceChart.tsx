@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
+  LineController,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -41,6 +42,7 @@ const crosshairPlugin: Plugin = {
 };
 
 ChartJS.register(
+  LineController,
   CategoryScale,
   LinearScale,
   PointElement,

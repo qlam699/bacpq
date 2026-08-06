@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { latestTick } from './lib/ctj';
 import { useGithubAuth } from './hooks/useGithubAuth';
+import { usePriceNotify } from './hooks/usePriceNotify';
 import { usePricePoll } from './hooks/usePricePoll';
 import { usePositions } from './hooks/usePositions';
 import { useSettings } from './hooks/useSettings';
@@ -27,6 +28,10 @@ export default function App() {
     settings.productId,
     settings.pollMs,
   );
+  const { permission, refreshPermission } = usePriceNotify(
+    ticks,
+    settings.notifyOnChange,
+  );
 
   const tick = useMemo(() => latestTick(ticks), [ticks]);
   const currentBuy = tick?.buyprice ?? null;
@@ -47,6 +52,8 @@ export default function App() {
           githubSyncing={syncing}
           onGithubLogin={github.login}
           onGithubLogout={github.logout}
+          notifyPermission={permission}
+          onNotifyPermissionChange={refreshPermission}
         />
 
         <PriceChart

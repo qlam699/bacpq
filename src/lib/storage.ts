@@ -12,6 +12,8 @@ export type Position = {
 export type Settings = {
   productId: ProductId;
   pollMs: number;
+  /** Bật thông báo khi giá mua/bán thay đổi */
+  notifyOnChange: boolean;
 };
 
 const POSITIONS_KEY = 'bacpq:positions';
@@ -19,7 +21,8 @@ const SETTINGS_KEY = 'bacpq:settings';
 
 const DEFAULT_SETTINGS: Settings = {
   productId: 'BPQ1L',
-  pollMs: 10_000,
+  pollMs: 3_000,
+  notifyOnChange: false,
 };
 
 function readJson<T>(key: string, fallback: T): T {

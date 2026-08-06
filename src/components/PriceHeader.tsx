@@ -1,6 +1,7 @@
 import { dayExtremes, PRODUCTS, type CtjTick, type ProductId } from '../lib/ctj';
 import { formatPct, formatSignedVnd, formatTime, formatVnd } from '../lib/format';
 import type { GithubUser } from '../lib/githubAuth';
+import { notifyTest, requestNotifyPermission } from '../lib/notify';
 import type { Settings } from '../lib/storage';
 import { GithubAuthControls } from './GithubAuthControls';
 
@@ -17,6 +18,8 @@ type Props = {
   githubSyncing?: boolean;
   onGithubLogin: (token: string) => Promise<void>;
   onGithubLogout: () => void;
+  notifyPermission?: string;
+  onNotifyPermissionChange?: () => void;
 };
 
 export function PriceHeader({
@@ -32,9 +35,57 @@ export function PriceHeader({
   githubSyncing,
   onGithubLogin,
   onGithubLogout,
+  notifyPermission,
+  onNotifyPermissionChange,
 }: Props) {
+  async function toggleNotify() {
+    if (settings.notifyOnChange) {
+      updateSettings({ notifyOnChange: false });
+      return;
+    }
+    const perm = await requestNotifyPermission();
+    onNotifyPermissionChange?.();
+    if (perm === 'unsupported') {
+      alert('Trình duyệt không hỗ trợ thông báo.');
+      return;
+    }
+    if (perm !== 'granted') {
+      alert(
+        'Hãy cho phép thông báo trong trình duyệt (ổ khóa URL → Thông báo) rồi bấm lại.',
+      );
+      return;
+    }
+    updateSettings({ notifyOnChange: true });
+    await notifyTest();
+  }
+
+  const notifyOn = settings.notifyOnChange && notifyPermission === 'granted';
+  const notifyLabel =
+    notifyPermission === 'unsupported'
+      ? 'TB không hỗ trợ'
+      : notifyPermission === 'denied'
+        ? 'TB bị chặn'
+        : notifyOn
+          ? 'Tắt TB'
+          : 'Bật TB';
+
   const actions = (
     <div className="header-actions">
+      <button
+        type="button"
+        className={`btn ghost notify-btn${notifyOn ? ' notify-btn--on' : ''}`}
+        onClick={() => void toggleNotify()}
+        title={
+          notifyOn
+            ? 'Đang bật browser notification khi giá đổi'
+            : 'Bật browser notification khi giá mua/bán đổi'
+        }
+        disabled={
+          notifyPermission === 'unsupported' || notifyPermission === 'denied'
+        }
+      >
+        {notifyLabel}
+      </button>
       <GithubAuthControls
         user={githubUser}
         storage={githubStorage}

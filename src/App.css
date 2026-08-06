@@ -532,6 +532,52 @@ th {
   margin-left: auto;
 }
 
+.notify-btn--on {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.price-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: #1c1914;
+  color: #fffdf8;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  animation: toast-in 0.25s ease;
+}
+
+.price-toast__label {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ddeb8;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
 .gh-auth {
   display: flex;
   align-items: center;
@@ -676,7 +722,7 @@ code {
   }
 
   .price-card.accent {
-    grid-column: 1 / -1;
+    display: none;
   }
 
   .price-card strong {
@@ -737,10 +783,6 @@ code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.25rem;
     margin-top: 0.25rem;
-  }
-
-  .price-card.accent {
-    display: none;
   }
 
   .price-card {

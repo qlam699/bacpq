@@ -17,7 +17,7 @@ export type Settings = {
 };
 
 const POSITIONS_KEY = 'bacpq:positions';
-const SETTINGS_KEY = 'bacpq:settings';
+const SETTINGS_KEY = 'bacpq:setting';
 
 const DEFAULT_SETTINGS: Settings = {
   productId: 'BPQ1L',

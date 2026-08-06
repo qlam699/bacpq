@@ -125,13 +125,19 @@ export function PriceHeader({
 
           {extremes ? (
             <div className="extremes">
-              <p className="muted">
-                Min <b>{formatVnd(extremes.minBuy.buyprice)}</b> ·{' '}
-                {formatTime(extremes.minBuy.last_update)}
+              <p className="extremes__row muted">
+                <span className="extremes__tag">Min</span>
+                <b>{formatVnd(extremes.minBuy.buyprice)}</b>
+                <span className="extremes__time">
+                  {formatTime(extremes.minBuy.last_update)}
+                </span>
               </p>
-              <p className="muted">
-                Max <b>{formatVnd(extremes.maxBuy.buyprice)}</b> ·{' '}
-                {formatTime(extremes.maxBuy.last_update)}
+              <p className="extremes__row muted">
+                <span className="extremes__tag">Max</span>
+                <b>{formatVnd(extremes.maxBuy.buyprice)}</b>
+                <span className="extremes__time">
+                  {formatTime(extremes.maxBuy.last_update)}
+                </span>
               </p>
             </div>
           ) : null}
@@ -146,13 +152,19 @@ export function PriceHeader({
           </p>
           {extremes ? (
             <div className="extremes">
-              <p className="muted">
-                Min <b>{formatVnd(extremes.minSell.sellprice)}</b> ·{' '}
-                {formatTime(extremes.minSell.last_update)}
+              <p className="extremes__row muted">
+                <span className="extremes__tag">Min</span>
+                <b>{formatVnd(extremes.minSell.sellprice)}</b>
+                <span className="extremes__time">
+                  {formatTime(extremes.minSell.last_update)}
+                </span>
               </p>
-              <p className="muted">
-                Max <b>{formatVnd(extremes.maxSell.sellprice)}</b> ·{' '}
-                {formatTime(extremes.maxSell.last_update)}
+              <p className="extremes__row muted">
+                <span className="extremes__tag">Max</span>
+                <b>{formatVnd(extremes.maxSell.sellprice)}</b>
+                <span className="extremes__time">
+                  {formatTime(extremes.maxSell.last_update)}
+                </span>
               </p>
             </div>
           ) : null}

@@ -22,6 +22,30 @@ npm run dev
 
 Web Push trên Linux: dùng **Google Chrome** hoặc **Firefox**. Chromium/ungoogled/Brave thường báo `Registration failed - push service error` vì thiếu Google FCM. Brave: Settings → Privacy → bật *Use Google services for push messaging*.
 
+## Production / VPS (`bac.codayroi.com`)
+
+DNS: record **A** `bac.codayroi.com` → IP VPS. Rồi trên Ubuntu (root):
+
+```bash
+git clone <repo> /var/www/bacpq
+cd /var/www/bacpq
+sudo CERTBOT_EMAIL=you@example.com bash scripts/setup-vps.sh
+# điền VAPID trong /var/www/bacpq/.env
+sudo -u bacpq npx --yes web-push generate-vapid-keys
+sudo nano /var/www/bacpq/.env
+sudo bash scripts/setup-vps.sh    # start service + HTTPS
+```
+
+Cập nhật code:
+
+```bash
+sudo bash /var/www/bacpq/scripts/deploy.sh
+```
+
+- App: `127.0.0.1:8787` — Nginx reverse proxy + Let's Encrypt
+- Subscriptions: `/var/lib/bacpq` (không xóa khi deploy)
+- Log: `journalctl -u bacpq -f`
+
 ## Production / Zeabur
 
 Một service: Express serve `dist/` + `/api/*`. `zbpack.json` ép build/start Node (đừng set `ZBPACK_OUTPUT_DIR` — Zeabur sẽ chỉ host static, mất SSE/push).

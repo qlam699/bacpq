@@ -24,12 +24,49 @@ Web Push trên Linux: dùng **Google Chrome** hoặc **Firefox**. Chromium/ungoo
 
 ## Production / Zeabur
 
+Một service: Express serve `dist/` + `/api/*`. `zbpack.json` ép build/start Node (đừng set `ZBPACK_OUTPUT_DIR` — Zeabur sẽ chỉ host static, mất SSE/push).
+
+### 1. Push code lên GitHub
+
 ```bash
-npm run build
-npm start
+git push -u origin HEAD
 ```
 
-`start` chạy Express: serve `dist/` + `/api/*`. Zeabur dùng script `start`, set `PORT` tự động.
+### 2. Tạo project trên [Zeabur](https://zeabur.com)
+
+1. **New Project** → chọn region gần VN nếu có.
+2. **Add Service** → **GitHub** → authorize → chọn repo `bacpq`.
+3. Build plan phải là **Node.js** (không phải static/Caddy).
+4. **Deploy**.
+
+### 3. Variables (service → Variables)
+
+| Biến | Giá trị |
+|------|---------|
+| `VAPID_PUBLIC_KEY` | output `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | cùng cặp key |
+| `VAPID_SUBJECT` | `mailto:you@example.com` |
+| `DATA_DIR` | `/data` |
+| `POLL_MS` | `2000` (optional) |
+
+`PORT` Zeabur tự set — không hardcode.
+
+Redeploy sau khi thêm biến.
+
+### 4. Domain
+
+Service → **Networking** → **Generate Domain** (HTTPS `*.zeabur.app`). Web Push cần HTTPS.
+
+### 5. Volume (giữ subscription khi restart)
+
+Service → **Volumes** → mount **`/data`**. Free tier: volume có thể tính phí / mất zero-downtime; không mount thì mất subscription mỗi lần redeploy.
+
+### 6. Kiểm tra
+
+- `https://<domain>/api/health` → `"ok": true`, `"push": true`
+- Mở trang, giá SSE chạy, **Bật TB** trên Chrome/Firefox
+
+Local: `npm run build && npm start` (cùng lệnh Zeabur).
 
 ### Env
 

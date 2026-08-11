@@ -17,25 +17,6 @@ export const PRODUCTS: { id: ProductId; label: string }[] = [
   { id: 'BPQ1KG', label: '1KG Bạc thỏi Phú Quý 999 1 kg' },
 ];
 
-const BASE = 'https://prices.ctj.com.vn/today';
-
-export async function fetchTodayPrices(productId: ProductId): Promise<CtjTick[]> {
-  const url = `${BASE}?id=${productId}&_t=${Date.now()}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`CTJ API ${res.status}`);
-  }
-  const data = (await res.json()) as CtjTick[];
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('CTJ API returned empty data');
-  }
-  return data;
-  // API returns newest first; reverse for chronological chart
-  // return [...data].sort(
-  //   (a, b) => new Date(a.last_update).getTime() - new Date(b.last_update).getTime(),
-  // );
-}
-
 export function latestTick(ticks: CtjTick[]): CtjTick | null {
   if (ticks.length === 0) return null;
   return ticks.reduce((best, t) =>

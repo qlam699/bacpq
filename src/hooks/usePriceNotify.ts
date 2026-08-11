@@ -3,14 +3,15 @@ import { latestTick, type CtjTick } from '../lib/ctj';
 import {
   ensureNotifyServiceWorker,
   getNotifyPermission,
+  hasPushSubscription,
   notifyPriceChange,
   tickFingerprint,
   type NotifyPermission,
 } from '../lib/notify';
 
 /**
- * Browser Notification khi giá mua/bán đổi.
- * Bỏ qua lần fetch đầu / khi đổi sản phẩm.
+ * Flash title khi tab ẩn.
+ * Local notification chỉ khi chưa có Web Push (tránh double với server).
  */
 export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
   const prevRef = useRef<CtjTick | null>(null);
@@ -45,9 +46,12 @@ export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
     if (prev.buyprice === next.buyprice && prev.sellprice === next.sellprice) {
       return;
     }
-    if (!enabled || permission !== 'granted') return;
+    if (!enabled) return;
 
-    void notifyPriceChange(prev, next);
+    void (async () => {
+      if (await hasPushSubscription()) return;
+      await notifyPriceChange(prev, next);
+    })();
 
     if (document.visibilityState === 'hidden') {
       const buyDiff = next.buyprice - prev.buyprice;
@@ -64,7 +68,7 @@ export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
       document.addEventListener('visibilitychange', onVis);
       window.setTimeout(restore, 8000);
     }
-  }, [ticks, enabled, permission]);
+  }, [ticks, enabled]);
 
   return {
     permission,

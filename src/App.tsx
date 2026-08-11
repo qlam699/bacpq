@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { latestTick } from './lib/ctj';
 import { useGithubAuth } from './hooks/useGithubAuth';
 import { usePriceNotify } from './hooks/usePriceNotify';
-import { usePricePoll } from './hooks/usePricePoll';
+import { usePriceStream } from './hooks/usePriceStream';
 import { usePositions } from './hooks/usePositions';
 import { useSettings } from './hooks/useSettings';
 import { PriceHeader } from './components/PriceHeader';
@@ -24,10 +24,7 @@ export default function App() {
     syncing,
     syncError,
   } = usePositions(settings.productId, github);
-  const { ticks, loading, error, refresh } = usePricePoll(
-    settings.productId,
-    settings.pollMs,
-  );
+  const { ticks, loading, error, refresh } = usePriceStream(settings.productId);
   const { permission, refreshPermission } = usePriceNotify(
     ticks,
     settings.notifyOnChange,

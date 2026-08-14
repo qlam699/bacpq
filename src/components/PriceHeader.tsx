@@ -1,7 +1,13 @@
 import { dayExtremes, PRODUCTS, type CtjTick, type ProductId } from '../lib/ctj';
 import { formatPct, formatSignedVnd, formatTime, formatVnd } from '../lib/format';
 import type { GithubUser } from '../lib/githubAuth';
-import { notifyTest, requestNotifyPermission } from '../lib/notify';
+import {
+  notifyTest,
+  PushServiceUnavailableError,
+  subscribeWebPush,
+  supportsWebPush,
+  unsubscribeWebPush,
+} from '../lib/notify';
 import type { Settings } from '../lib/storage';
 import { GithubAuthControls } from './GithubAuthControls';
 
@@ -40,28 +46,42 @@ export function PriceHeader({
 }: Props) {
   async function toggleNotify() {
     if (settings.notifyOnChange) {
+      await unsubscribeWebPush();
       updateSettings({ notifyOnChange: false });
+      onNotifyPermissionChange?.();
       return;
     }
-    const perm = await requestNotifyPermission();
-    onNotifyPermissionChange?.();
-    if (perm === 'unsupported') {
-      alert('Trình duyệt không hỗ trợ thông báo.');
+    if (!supportsWebPush()) {
+      alert('Trình duyệt không hỗ trợ Web Push.');
       return;
     }
-    if (perm !== 'granted') {
-      alert(
-        'Hãy cho phép thông báo trong trình duyệt (ổ khóa URL → Thông báo) rồi bấm lại.',
-      );
-      return;
+    try {
+      await subscribeWebPush();
+      onNotifyPermissionChange?.();
+      updateSettings({ notifyOnChange: true });
+      await notifyTest(false);
+    } catch (e) {
+      onNotifyPermissionChange?.();
+      const msg = e instanceof Error ? e.message : 'Không bật được thông báo';
+      if (msg.includes('Chưa được phép') || notifyPermission === 'denied') {
+        alert(
+          'Hãy cho phép thông báo trong trình duyệt (ổ khóa URL → Thông báo) rồi bấm lại.',
+        );
+        return;
+      }
+      if (e instanceof PushServiceUnavailableError) {
+        updateSettings({ notifyOnChange: true });
+        await notifyTest(true);
+        alert(`${msg}\n\nĐã bật thông báo local khi tab đang mở.`);
+        return;
+      }
+      alert(msg);
     }
-    updateSettings({ notifyOnChange: true });
-    await notifyTest();
   }
 
   const notifyOn = settings.notifyOnChange && notifyPermission === 'granted';
   const notifyLabel =
-    notifyPermission === 'unsupported'
+    notifyPermission === 'unsupported' || !supportsWebPush()
       ? 'TB không hỗ trợ'
       : notifyPermission === 'denied'
         ? 'TB bị chặn'
@@ -77,11 +97,13 @@ export function PriceHeader({
         onClick={() => void toggleNotify()}
         title={
           notifyOn
-            ? 'Đang bật browser notification khi giá đổi'
-            : 'Bật browser notification khi giá mua/bán đổi'
+            ? 'Đang bật Web Push khi giá đổi (cả khi đóng tab)'
+            : 'Bật Web Push khi giá mua/bán đổi'
         }
         disabled={
-          notifyPermission === 'unsupported' || notifyPermission === 'denied'
+          notifyPermission === 'unsupported' ||
+          notifyPermission === 'denied' ||
+          !supportsWebPush()
         }
       >
         {notifyLabel}

@@ -17,92 +17,68 @@ export VAPID_SUBJECT=mailto:you@example.com
 npm run dev
 ```
 
-- Web (Vite): http://localhost:5173 (proxy `/api` → server)
-- Server: http://127.0.0.1:8787
+- Web (Vite): [http://localhost:5173](http://localhost:5173) (proxy `/api` → server)
+- Server: [http://127.0.0.1:8787](http://127.0.0.1:8787)
 
 Web Push trên Linux: dùng **Google Chrome** hoặc **Firefox**. Chromium/ungoogled/Brave thường báo `Registration failed - push service error` vì thiếu Google FCM. Brave: Settings → Privacy → bật *Use Google services for push messaging*.
 
-## Production / VPS (`bac.codayroi.com`)
+## Production / VPS + Webinoly (`bac.codayroi.com`)
 
-DNS: record **A** `bac.codayroi.com` → IP VPS. Rồi trên Ubuntu (root):
+DNS: record **A** `bac.codayroi.com` → IP VPS. Webinoly đã cài sẵn. Trên Ubuntu (root):
 
 ```bash
 git clone <repo> /var/www/bacpq
 cd /var/www/bacpq
-sudo CERTBOT_EMAIL=you@example.com bash scripts/setup-vps.sh
-# điền VAPID trong /var/www/bacpq/.env
-sudo -u bacpq npx --yes web-push generate-vapid-keys
-sudo nano /var/www/bacpq/.env
-sudo bash scripts/setup-vps.sh    # start service + HTTPS
+sudo bash scripts/setup-vps-webinoly.sh
 ```
 
-Cập nhật code:
+Env production **không dùng `.env`**. Thêm trên GitHub → Settings → Secrets and variables → Actions, rồi **push `main`** (Actions ghi `/etc/bacpq.env` trên VPS).
+
+Cập nhật code: **push `main`** là đủ (GitHub Actions deploy). Chưa gắn Actions thì trên VPS:
 
 ```bash
 sudo bash /var/www/bacpq/scripts/deploy.sh
 ```
 
+
+
+### GitHub Actions (push `main` → build + deploy VPS)
+
+Workflow: `.github/workflows/deploy-vps.yml` — CI `npm run build` trên GitHub, rồi SSH vào VPS chạy `deploy.sh`.
+
+**1. SSH key (máy bạn hoặc GitHub):**
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions-bacpq" -f ./bacpq-deploy -N ""
+# public → VPS
+ssh-copy-id -i ./bacpq-deploy.pub USER@VPS_IP
+```
+
+User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl restart bacpq` (hoặc dùng `root`).
+
+**2. Repo GitHub → Settings → Secrets and variables → Actions**
+
+
+| Secret | Ví dụ |
+| --- | --- |
+| `VPS_HOST` | IP VPS |
+| `VPS_USER` | `root` hoặc user sudo |
+| `VPS_SSH_KEY` | private key deploy |
+| `VPS_PORT` | `22` (optional) |
+| `VAPID_PUBLIC_KEY` | từ `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | cùng cặp |
+| `VAPID_SUBJECT` | `mailto:you@example.com` |
+
+Variables (optional): `PORT` (8787), `DATA_DIR` (`/var/lib/bacpq`), `POLL_MS` (2000).
+
+
+Variable (optional): đổi path trên VPS thì sửa `cd /var/www/bacpq` trong workflow.
+
+**3. Repo trên VPS phải** `git pull` **được** (public, hoặc [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) read-only nếu private).
+
+Đổi branch: sửa `branches:` trong workflow (ví dụ `production`). `workflow_dispatch` cho phép bấm Deploy tay trên tab Actions.
+
 - App: `127.0.0.1:8787` — Nginx reverse proxy + Let's Encrypt
 - Subscriptions: `/var/lib/bacpq` (không xóa khi deploy)
 - Log: `journalctl -u bacpq -f`
 
-## Production / Zeabur
-
-Một service: Express serve `dist/` + `/api/*`. `zbpack.json` ép build/start Node (đừng set `ZBPACK_OUTPUT_DIR` — Zeabur sẽ chỉ host static, mất SSE/push).
-
-### 1. Push code lên GitHub
-
-```bash
-git push -u origin HEAD
-```
-
-### 2. Tạo project trên [Zeabur](https://zeabur.com)
-
-1. **New Project** → chọn region gần VN nếu có.
-2. **Add Service** → **GitHub** → authorize → chọn repo `bacpq`.
-3. Build plan phải là **Node.js** (không phải static/Caddy).
-4. **Deploy**.
-
-### 3. Variables (service → Variables)
-
-| Biến | Giá trị |
-|------|---------|
-| `VAPID_PUBLIC_KEY` | output `npx web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | cùng cặp key |
-| `VAPID_SUBJECT` | `mailto:you@example.com` |
-| `DATA_DIR` | `/data` |
-| `POLL_MS` | `2000` (optional) |
-
-`PORT` Zeabur tự set — không hardcode.
-
-Redeploy sau khi thêm biến.
-
-### 4. Domain
-
-Service → **Networking** → **Generate Domain** (HTTPS `*.zeabur.app`). Web Push cần HTTPS.
-
-### 5. Volume (giữ subscription khi restart)
-
-Service → **Volumes** → mount **`/data`**. Free tier: volume có thể tính phí / mất zero-downtime; không mount thì mất subscription mỗi lần redeploy.
-
-### 6. Kiểm tra
-
-- `https://<domain>/api/health` → `"ok": true`, `"push": true`
-- Mở trang, giá SSE chạy, **Bật TB** trên Chrome/Firefox
-
-Local: `npm run build && npm start` (cùng lệnh Zeabur).
-
-### Env
-
-| Biến | Mô tả |
-|------|--------|
-| `PORT` | HTTP port (Zeabur set sẵn) |
-| `VAPID_PUBLIC_KEY` | Public key Web Push |
-| `VAPID_PRIVATE_KEY` | Private key Web Push |
-| `VAPID_SUBJECT` | VD `mailto:you@example.com` |
-| `DATA_DIR` | Thư mục lưu `subscriptions.json` (mặc định `./data`) |
-| `POLL_MS` | Interval poll CTJ (mặc định `2000`) |
-
-Trên Zeabur: mount **Volume** vào `/data` và set `DATA_DIR=/data` để không mất subscription khi restart. Cần **HTTPS** để Service Worker / Web Push hoạt động.
-
-Poll chỉ trong **08:30–18:30 Asia/Ho_Chi_Minh**; ngoài giờ vẫn fetch một lần để có cache cho UI.

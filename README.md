@@ -30,7 +30,7 @@ Code app: `/var/www/bacpq` (Actions **tự clone** nếu chưa có). Repo phải
 
 Env: Secrets trên GitHub (`VAPID_*`, `VPS_*`) — không dùng `.env` trên VPS.
 
-Cập nhật code: **push `main`** là đủ (GitHub Actions deploy). Chưa gắn Actions thì trên VPS:
+Cập nhật code: **push** `main` là đủ (GitHub Actions deploy). Chưa gắn Actions thì trên VPS:
 
 ```bash
 sudo bash /var/www/bacpq/scripts/deploy.sh
@@ -55,18 +55,18 @@ User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl restart b
 **2. Repo GitHub → Settings → Secrets and variables → Actions**
 
 
-| Secret | Ví dụ |
-| --- | --- |
-| `VPS_HOST` | IP VPS |
-| `VPS_USER` | `root` hoặc user sudo |
-| `VPS_SSH_KEY` | private key `bacpq-deploy` (không passphrase) |
-| `VPS_PORT` | `22` (optional) |
-| `VAPID_PUBLIC_KEY` | từ `npx web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | cùng cặp |
-| `VAPID_SUBJECT` | `mailto:you@example.com` |
+| Secret              | Ví dụ                                         |
+| ------------------- | --------------------------------------------- |
+| `VPS_HOST`          | IP VPS                                        |
+| `VPS_USER`          | `root` hoặc user sudo                         |
+| `VPS_SSH_KEY`       | private key `bacpq-deploy` (không passphrase) |
+| `VPS_PORT`          | `22` (optional)                               |
+| `VAPID_PUBLIC_KEY`  | từ `npx web-push generate-vapid-keys`         |
+| `VAPID_PRIVATE_KEY` | cùng cặp                                      |
+| `VAPID_SUBJECT`     | `mailto:you@example.com`                      |
+
 
 Variables (optional): `PORT` (8787), `DATA_DIR` (`/var/lib/bacpq`), `POLL_MS` (2000).
-
 
 Variable (optional): đổi path trên VPS thì sửa `cd /var/www/bacpq` trong workflow.
 
@@ -78,3 +78,4 @@ Variable (optional): đổi path trên VPS thì sửa `cd /var/www/bacpq` trong 
 - Subscriptions: `/var/lib/bacpq` (không xóa khi deploy)
 - Log: `journalctl -u bacpq -f`
 
+Example: bac.codayroi.com

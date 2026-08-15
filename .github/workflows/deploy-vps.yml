@@ -79,12 +79,14 @@ jobs:
             sudo bash "$APP_DIR/scripts/setup-vps-webinoly.sh"
           else
             sudo chown -R bacpq:bacpq "$APP_DIR" || true
-            # Systemd đã có từ lần trước nhưng proxy Webinoly có thể chưa tạo
-            if [ ! -e /etc/nginx/sites-available/bac.codayroi.com ]; then
-              echo "==> Tạo proxy Webinoly (bù lần setup trước)"
-              sudo site bac.codayroi.com -proxy=8787 || true
-              sudo site bac.codayroi.com -ssl=on || true
-            fi
+          fi
+
+          # Site Webinoly = thao tác một lần, không fallback trong CI
+          if [ ! -e /etc/nginx/sites-available/bac.codayroi.com ]; then
+            echo "WARN: chưa có site bac.codayroi.com — app vẫn deploy :8787"
+            echo "  Tạo một lần trên VPS:"
+            echo "  sudo site bac.codayroi.com -proxy=[127.0.0.1:8787]"
+            echo "  sudo site bac.codayroi.com -ssl=on"
           fi
 
           echo "==> deploy.sh --no-pull"

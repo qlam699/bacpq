@@ -15,6 +15,27 @@ PORT="${PORT:-8787}"
 SKIP_SITE="${SKIP_SITE:-0}"
 SKIP_SSL="${SKIP_SSL:-0}"
 
+# Webinoly bắt buộc: -proxy=[host:port] (có dấu ngoặc vuông)
+webinoly_create_proxy() {
+  local domain="$1"
+  local port="$2"
+  local attempt
+  for attempt in \
+    "-proxy=[127.0.0.1:${port}]" \
+    "-proxy=[http://127.0.0.1:${port}]" \
+    "-proxy=[localhost:${port}]" \
+    "-proxy=[http://localhost:${port}]"
+  do
+    echo "==> Thử: site ${domain} ${attempt}"
+    # shellcheck disable=SC2086
+    if site "${domain}" ${attempt}; then
+      echo "==> Proxy OK (${attempt})"
+      return 0
+    fi
+  done
+  return 1
+}
+
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Chạy bằng root: sudo bash scripts/setup-vps-webinoly.sh" >&2
   exit 1
@@ -72,12 +93,13 @@ if [[ "${SKIP_SITE}" != "1" ]]; then
     echo "==> Site ${DOMAIN} đã có (Webinoly). Không tạo lại / không ghi đè nginx."
     site "${DOMAIN}" -info || true
   else
-    # Webinoly: port-only = localhost:PORT (đừng dùng http://127.0.0.1 — bản cũ báo "valid host and port")
-    echo "==> Tạo reverse proxy Webinoly → localhost:${PORT}"
-    if ! site "${DOMAIN}" -proxy="${PORT}"; then
-      echo "Cảnh báo: tạo site proxy thất bại. Thử tay:" >&2
-      echo "  sudo site ${DOMAIN} -proxy=${PORT}" >&2
+    echo "==> Tạo reverse proxy Webinoly → app port ${PORT}"
+    if ! webinoly_create_proxy "${DOMAIN}" "${PORT}"; then
+      echo "Cảnh báo: tạo site proxy thất bại — app vẫn chạy trên :${PORT}." >&2
+      echo "Thử tay trên VPS:" >&2
+      echo "  sudo site ${DOMAIN} -proxy=[127.0.0.1:${PORT}]" >&2
       echo "  sudo site ${DOMAIN} -ssl=on" >&2
+      echo "  sudo site ${DOMAIN} -list" >&2
     fi
   fi
 
@@ -95,7 +117,7 @@ if [[ "${SKIP_SITE}" != "1" ]]; then
   fi
 else
   echo "==> Bỏ qua site Webinoly (SKIP_SITE=1). Tự tạo:"
-  echo "    sudo site ${DOMAIN} -proxy=${PORT}"
+  echo "    sudo site ${DOMAIN} -proxy=[127.0.0.1:${PORT}]"
   echo "    sudo site ${DOMAIN} -ssl=on"
 fi
 

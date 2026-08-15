@@ -26,13 +26,9 @@ Web Push trên Linux: dùng **Google Chrome** hoặc **Firefox**. Chromium/ungoo
 
 DNS: record **A** `bac.codayroi.com` → IP VPS. Webinoly đã cài sẵn. Trên Ubuntu (root):
 
-```bash
-git clone <repo> /var/www/bacpq
-cd /var/www/bacpq
-sudo bash scripts/setup-vps-webinoly.sh
-```
+Code app: `/var/www/bacpq` (Actions **tự clone** nếu chưa có). Repo phải **public**, hoặc trên VPS đã gắn deploy key để `git clone`/`pull` được.
 
-Env production **không dùng `.env`**. Thêm trên GitHub → Settings → Secrets and variables → Actions, rồi **push `main`** (Actions ghi `/etc/bacpq.env` trên VPS).
+Env: Secrets trên GitHub (`VAPID_*`, `VPS_*`) — không dùng `.env` trên VPS.
 
 Cập nhật code: **push `main`** là đủ (GitHub Actions deploy). Chưa gắn Actions thì trên VPS:
 
@@ -63,7 +59,7 @@ User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl restart b
 | --- | --- |
 | `VPS_HOST` | IP VPS |
 | `VPS_USER` | `root` hoặc user sudo |
-| `VPS_SSH_KEY` | private key deploy |
+| `VPS_SSH_KEY` | private key `bacpq-deploy` (không passphrase) |
 | `VPS_PORT` | `22` (optional) |
 | `VAPID_PUBLIC_KEY` | từ `npx web-push generate-vapid-keys` |
 | `VAPID_PRIVATE_KEY` | cùng cặp |

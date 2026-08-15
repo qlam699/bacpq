@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Chỉ kiểm tra build trên CI — bản chạy production build lại trên VPS
   build:
     runs-on: ubuntu-latest
     steps:
@@ -33,19 +34,60 @@ jobs:
       DATA_DIR: ${{ vars.DATA_DIR || '/var/lib/bacpq' }}
       POLL_MS: ${{ vars.POLL_MS || '2000' }}
     steps:
-      - name: SSH deploy
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          envs: PORT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DATA_DIR,POLL_MS
-          script_stop: true
-          script: |
-            set -euo pipefail
-            cd /var/www/bacpq
-            sudo -u bacpq git fetch origin
-            sudo -u bacpq git checkout '${{ github.ref_name }}'
-            sudo --preserve-env=PORT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DATA_DIR,POLL_MS \
-              bash scripts/deploy.sh
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy over SSH
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ]; then
+            echo "Thiếu VPS_HOST hoặc VPS_USER"
+            exit 1
+          fi
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "export PORT='${{ env.PORT }}' VAPID_PUBLIC_KEY='${{ env.VAPID_PUBLIC_KEY }}' VAPID_PRIVATE_KEY='${{ env.VAPID_PRIVATE_KEY }}' VAPID_SUBJECT='${{ env.VAPID_SUBJECT }}' DATA_DIR='${{ env.DATA_DIR }}' POLL_MS='${{ env.POLL_MS }}' BRANCH='${{ github.ref_name }}' REPO='https://github.com/${{ github.repository }}.git'; bash -s" << 'EOF'
+          set -euo pipefail
+
+          APP_DIR=/var/www/bacpq
+
+          if [ ! -d "$APP_DIR/.git" ]; then
+            echo "==> Clone $APP_DIR"
+            sudo mkdir -p /var/www
+            # Lần trước fail giữa chừng → folder tồn tại nhưng chưa phải git repo
+            if [ -e "$APP_DIR" ]; then
+              sudo rm -rf "$APP_DIR"
+            fi
+            sudo git clone -b "$BRANCH" "$REPO" "$APP_DIR"
+          fi
+
+          # Sync code trước setup — để VPS nhận script mới (vd. fix apt)
+          echo "==> git sync $BRANCH"
+          sudo git -C "$APP_DIR" fetch origin
+          sudo git -C "$APP_DIR" checkout "$BRANCH"
+          sudo git -C "$APP_DIR" pull --ff-only
+
+          if [ ! -f /etc/systemd/system/bacpq.service ]; then
+            echo "==> setup-vps-webinoly.sh"
+            sudo bash "$APP_DIR/scripts/setup-vps-webinoly.sh"
+          else
+            sudo chown -R bacpq:bacpq "$APP_DIR" || true
+            # Systemd đã có từ lần trước nhưng proxy Webinoly có thể chưa tạo
+            if [ ! -e /etc/nginx/sites-available/bac.codayroi.com ]; then
+              echo "==> Tạo proxy Webinoly (bù lần setup trước)"
+              sudo site bac.codayroi.com -proxy=8787 || true
+              sudo site bac.codayroi.com -ssl=on || true
+            fi
+          fi
+
+          echo "==> deploy.sh --no-pull"
+          sudo --preserve-env=PORT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DATA_DIR,POLL_MS \
+            bash "$APP_DIR/scripts/deploy.sh" --no-pull
+          EOF

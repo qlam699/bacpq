@@ -35,7 +35,8 @@ echo "==> Domain: ${DOMAIN}"
 echo "==> Proxy: 127.0.0.1:${PORT} (Webinoly, không đụng nginx conf tay)"
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -y
+# Ondrej PHP / Webinoly PPA đôi khi đổi Label → cần --allow-releaseinfo-change
+apt-get update -y --allow-releaseinfo-change
 apt-get install -y git curl ca-certificates
 
 if ! command -v node >/dev/null 2>&1 || ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 20)'; then
@@ -71,11 +72,16 @@ if [[ "${SKIP_SITE}" != "1" ]]; then
     echo "==> Site ${DOMAIN} đã có (Webinoly). Không tạo lại / không ghi đè nginx."
     site "${DOMAIN}" -info || true
   else
-    echo "==> Tạo reverse proxy Webinoly → 127.0.0.1:${PORT}"
-    site "${DOMAIN}" -proxy="http://127.0.0.1:${PORT}"
+    # Webinoly: port-only = localhost:PORT (đừng dùng http://127.0.0.1 — bản cũ báo "valid host and port")
+    echo "==> Tạo reverse proxy Webinoly → localhost:${PORT}"
+    if ! site "${DOMAIN}" -proxy="${PORT}"; then
+      echo "Cảnh báo: tạo site proxy thất bại. Thử tay:" >&2
+      echo "  sudo site ${DOMAIN} -proxy=${PORT}" >&2
+      echo "  sudo site ${DOMAIN} -ssl=on" >&2
+    fi
   fi
 
-  if [[ "${SKIP_SSL}" != "1" ]]; then
+  if [[ "${SKIP_SSL}" != "1" && -e "${SITE_NGINX}" ]]; then
     echo "==> SSL Let's Encrypt (Webinoly)"
     if site "${DOMAIN}" -ssl=on; then
       echo "==> SSL OK"
@@ -83,13 +89,13 @@ if [[ "${SKIP_SITE}" != "1" ]]; then
       echo "SSL chưa xong. Kiểm tra DNS A ${DOMAIN} → IP VPS, rồi:" >&2
       echo "  sudo site ${DOMAIN} -ssl=on" >&2
     fi
-  else
+  elif [[ "${SKIP_SSL}" == "1" ]]; then
     echo "==> Bỏ qua SSL (SKIP_SSL=1). Khi DNS sẵn sàng:"
     echo "    sudo site ${DOMAIN} -ssl=on"
   fi
 else
   echo "==> Bỏ qua site Webinoly (SKIP_SITE=1). Tự tạo:"
-  echo "    sudo site ${DOMAIN} -proxy=http://127.0.0.1:${PORT}"
+  echo "    sudo site ${DOMAIN} -proxy=${PORT}"
   echo "    sudo site ${DOMAIN} -ssl=on"
 fi
 

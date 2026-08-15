@@ -7,6 +7,7 @@ import { usePositions } from './hooks/usePositions';
 import { useSettings } from './hooks/useSettings';
 import { PriceHeader } from './components/PriceHeader';
 import { PriceChart } from './components/PriceChart';
+import { HistoryChart } from './components/HistoryChart';
 import { PositionForm } from './components/PositionForm';
 import { PositionTable } from './components/PositionTable';
 import './App.css';
@@ -78,6 +79,9 @@ export default function App() {
             storageLabel={storage === 'gist' ? 'GitHub Gist' : 'Máy này'}
           />
         </div>
+
+        <HistoryChart />
+
         <footer className="footer">Bạc Phú Quý Tracker - QLam</footer>
       </div>
     </div>

@@ -2,6 +2,12 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_IDS, type ProductId } from './ctj.js';
+import {
+  fetchPhuquyHistory,
+  isHistoryDate,
+  isHistoryDuration,
+  parseHistoryUnitType,
+} from './phuquyHistory.js';
 import { getCachedPrices, pollAll, startPoller } from './poller.js';
 import {
   configureWebPush,
@@ -59,6 +65,62 @@ app.get('/api/prices', (req, res) => {
     return;
   }
   res.json(ticks);
+});
+
+app.get('/api/history', async (req, res) => {
+  const type = parseHistoryUnitType(req.query.type);
+  if (type == null) {
+    res.status(400).json({ error: 'type required (1=Lượng|3=KG)' });
+    return;
+  }
+
+  const durationRaw = req.query.duration;
+  const fromRaw = req.query.fromDate;
+  const toRaw = req.query.toDate;
+  const hasDuration =
+    typeof durationRaw === 'string' && durationRaw.length > 0;
+  const hasRange =
+    typeof fromRaw === 'string' &&
+    fromRaw.length > 0 &&
+    typeof toRaw === 'string' &&
+    toRaw.length > 0;
+
+  if (hasDuration === hasRange) {
+    res.status(400).json({
+      error:
+        'provide either duration (1D|7D|1M|3M|1Y) or fromDate+toDate (dd/MM/yyyy)',
+    });
+    return;
+  }
+
+  try {
+    if (hasDuration) {
+      if (!isHistoryDuration(durationRaw)) {
+        res.status(400).json({ error: 'invalid duration' });
+        return;
+      }
+      const data = await fetchPhuquyHistory({ type, duration: durationRaw });
+      res.set('Cache-Control', 'no-store');
+      res.json(data);
+      return;
+    }
+    if (!isHistoryDate(fromRaw) || !isHistoryDate(toRaw)) {
+      res.status(400).json({ error: 'fromDate/toDate must be dd/MM/yyyy' });
+      return;
+    }
+    const data = await fetchPhuquyHistory({
+      type,
+      fromDate: fromRaw,
+      toDate: toRaw,
+    });
+    res.set('Cache-Control', 'no-store');
+    res.json(data);
+  } catch (err) {
+    console.error('[history]', err);
+    res.status(502).json({
+      error: err instanceof Error ? err.message : 'Failed to fetch history',
+    });
+  }
 });
 
 app.get('/api/prices/stream', (req, res) => {

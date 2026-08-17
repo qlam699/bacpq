@@ -1,4 +1,4 @@
-import { PRODUCTS, type CtjTick, type ProductId } from './ctj';
+import { type CtjTick, type ProductId } from './ctj';
 import { formatSignedVnd, formatVnd } from './format';
 
 export type NotifyPermission = NotificationPermission | 'unsupported';
@@ -179,9 +179,9 @@ async function fetchVapidPublicKey(): Promise<string> {
   return data.publicKey;
 }
 
-/** Đăng ký PushManager + gửi subscription lên server. */
+/** Đăng ký PushManager + gửi subscription lên server. Web Push chỉ báo 1L. */
 export async function subscribeWebPush(
-  productIds: ProductId[] = PRODUCTS.map((p) => p.id),
+  productIds: ProductId[] = ['BPQ1L'],
 ): Promise<PushSubscription> {
   if (!supportsWebPush()) {
     throw new Error('Trình duyệt không hỗ trợ Web Push');

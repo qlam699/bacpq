@@ -2,7 +2,6 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { PushSubscription } from 'web-push';
 import type { ProductId } from './ctj.js';
-import { PRODUCT_IDS } from './ctj.js';
 
 export type StoredSubscription = {
   endpoint: string;
@@ -44,11 +43,13 @@ async function persist(list: StoredSubscription[]): Promise<void> {
   await writeFile(storePath(), JSON.stringify(list, null, 2), 'utf8');
 }
 
+const PUSH_PRODUCT_IDS: ProductId[] = ['BPQ1L'];
+
 function normalizeProductIds(ids: unknown): ProductId[] {
-  if (!Array.isArray(ids) || ids.length === 0) return [...PRODUCT_IDS];
-  const allowed = new Set<string>(PRODUCT_IDS);
+  if (!Array.isArray(ids) || ids.length === 0) return [...PUSH_PRODUCT_IDS];
+  const allowed = new Set<string>(PUSH_PRODUCT_IDS);
   const filtered = ids.filter((id): id is ProductId => allowed.has(String(id)));
-  return filtered.length > 0 ? filtered : [...PRODUCT_IDS];
+  return filtered.length > 0 ? filtered : [...PUSH_PRODUCT_IDS];
 }
 
 export async function upsertSubscription(

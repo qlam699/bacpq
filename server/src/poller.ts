@@ -42,6 +42,7 @@ async function pollOne(productId: ProductId): Promise<void> {
 
     const prevPriceFp = lastPriceFp.get(productId);
     if (
+      productId === 'BPQ1L' &&
       prevPriceFp !== undefined &&
       prevLatest &&
       nextLatest &&

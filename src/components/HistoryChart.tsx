@@ -96,7 +96,7 @@ function yBounds(
 }
 
 function timeUnitFor(duration: HistoryDuration | null): 'hour' | 'day' {
-  if (duration === '1D' || duration === '7D') return 'hour';
+  if (duration === '1D') return 'hour';
   return 'day';
 }
 
@@ -129,8 +129,6 @@ export function HistoryChart() {
     () => weekdayStatsFromPoints(rawPoints ?? []),
     [rawPoints],
   );
-  const axisWithTime = false; //timeUnitFor(duration) === 'hour';
-
   const chartData = useMemo(
     () => ({
       datasets: [
@@ -302,6 +300,7 @@ export function HistoryChart() {
                   },
                 },
               },
+              layout: { padding: { left: 4, right: 4 } },
               scales: {
                 x: {
                   type: 'time',
@@ -311,12 +310,13 @@ export function HistoryChart() {
                   grid: { color: 'rgba(0,0,0,0.05)' },
                   ticks: {
                     maxRotation: 0,
-                    autoSkipPadding: 10,
+                    autoSkip: true,
+                    autoSkipPadding: 40,
                     font: { family: 'IBM Plex Sans', size: 9 },
                     callback(_val, index, ticks) {
                       const raw = ticks[index]?.value;
                       if (typeof raw !== 'number') return '';
-                      return formatHistoryAxisTick(raw, axisWithTime);
+                      return formatHistoryAxisTick(raw);
                     },
                   },
                 },
@@ -325,6 +325,7 @@ export function HistoryChart() {
                   max: bounds?.max,
                   grid: { color: 'rgba(0,0,0,0.06)' },
                   ticks: {
+                    padding: 6,
                     font: { family: 'IBM Plex Sans', size: 9 },
                     callback: (v) =>
                       typeof v === 'number'

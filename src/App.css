@@ -699,6 +699,79 @@ code {
   border-radius: 4px;
 }
 
+.settings-btn {
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+}
+
+.settings-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-close {
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.settings-section__title {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.threshold-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-left: 0.25rem;
+}
+
+.threshold-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-left: 0.75rem;
+}
+
+.threshold-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.threshold-field input {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  width: 100%;
+}
+
 @media (max-width: 860px) {
   .grid-2,
   .summary,

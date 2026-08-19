@@ -252,7 +252,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
             options={{
               responsive: true,
               maintainAspectRatio: false,
-              layout: { padding: 0 },
+              layout: { padding: { left: 4, right: 4 } },
               // Hover theo trục X: trên/dưới điểm vẫn hiện cả mua + bán
               interaction: { mode: 'index', intersect: false, axis: 'x' },
               plugins: {
@@ -315,6 +315,8 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
                   grid: { color: 'rgba(0,0,0,0.06)' },
                   ticks: {
                     stepSize: Y_STEP,
+                    mirror: false,
+                    padding: 6,
                     font: { family: 'IBM Plex Sans', size: 9 },
                     callback: (v) =>
                       typeof v === 'number'

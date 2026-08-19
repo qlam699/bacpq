@@ -57,11 +57,9 @@ export function formatHistoryTooltipTime(ms: number): string {
   }).format(d)}`;
 }
 
-export function formatHistoryAxisTick(ms: number, withTime: boolean): string {
+export function formatHistoryAxisTick(ms: number): string {
   const d = new Date(ms);
-  const day = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-  if (!withTime) return day;
-  return `${day} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export function formatDateTimeLocal(iso: string): string {

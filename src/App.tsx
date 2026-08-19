@@ -13,8 +13,8 @@ import { PositionTable } from './components/PositionTable';
 import './App.css';
 
 export default function App() {
-  const { settings, updateSettings } = useSettings();
   const github = useGithubAuth();
+  const { settings, updateSettings, setGist } = useSettings();
   const {
     visiblePositions,
     add,
@@ -24,11 +24,11 @@ export default function App() {
     storage,
     syncing,
     syncError,
-  } = usePositions(settings.productId, github);
+  } = usePositions(settings.productId, github, setGist);
   const { ticks, loading, error, refresh } = usePriceStream(settings.productId);
   const { permission, refreshPermission } = usePriceNotify(
     ticks,
-    settings.notifyOnChange,
+    settings,
   );
 
   const tick = useMemo(() => latestTick(ticks), [ticks]);

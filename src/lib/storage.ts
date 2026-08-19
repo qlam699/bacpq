@@ -12,8 +12,10 @@ export type Position = {
 export type Settings = {
   productId: ProductId;
   pollMs: number;
-  /** Bật thông báo khi giá mua/bán thay đổi */
   notifyOnChange: boolean;
+  thresholdEnabled: boolean;
+  minBuy: number | null;
+  maxSell: number | null;
 };
 
 const POSITIONS_KEY = 'bacpq:positions';
@@ -23,6 +25,9 @@ const DEFAULT_SETTINGS: Settings = {
   productId: 'BPQ1L',
   pollMs: 3_000,
   notifyOnChange: false,
+  thresholdEnabled: false,
+  minBuy: null,
+  maxSell: null,
 };
 
 function readJson<T>(key: string, fallback: T): T {

@@ -7,6 +7,9 @@ export type StoredSubscription = {
   endpoint: string;
   subscription: PushSubscription;
   productIds: ProductId[];
+  thresholdEnabled: boolean;
+  minBuy: number | null;
+  maxSell: number | null;
   updatedAt: string;
 };
 
@@ -55,12 +58,20 @@ function normalizeProductIds(ids: unknown): ProductId[] {
 export async function upsertSubscription(
   subscription: PushSubscription,
   productIds?: unknown,
+  thresholdOpts?: {
+    thresholdEnabled?: boolean;
+    minBuy?: number | null;
+    maxSell?: number | null;
+  },
 ): Promise<StoredSubscription> {
   const list = await load();
   const entry: StoredSubscription = {
     endpoint: subscription.endpoint,
     subscription,
     productIds: normalizeProductIds(productIds),
+    thresholdEnabled: thresholdOpts?.thresholdEnabled ?? false,
+    minBuy: thresholdOpts?.minBuy ?? null,
+    maxSell: thresholdOpts?.maxSell ?? null,
     updatedAt: new Date().toISOString(),
   };
   const idx = list.findIndex((s) => s.endpoint === entry.endpoint);

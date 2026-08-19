@@ -149,7 +149,11 @@ app.post('/api/push/subscribe', async (req, res) => {
     return;
   }
   try {
-    const stored = await upsertSubscription(subscription, req.body?.productIds);
+    const stored = await upsertSubscription(subscription, req.body?.productIds, {
+      thresholdEnabled: req.body?.thresholdEnabled,
+      minBuy: req.body?.minBuy,
+      maxSell: req.body?.maxSell,
+    });
     res.json({ ok: true, endpoint: stored.endpoint, productIds: stored.productIds });
   } catch (err) {
     console.error('[subscribe]', err);

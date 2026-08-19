@@ -14,8 +14,9 @@ import {
 } from '../lib/storage';
 
 type Auth = { token: string | null };
+type SetGist = (token: string | null, gistId: string | null) => void;
 
-export function usePositions(productId: ProductId, auth: Auth) {
+export function usePositions(productId: ProductId, auth: Auth, setGist?: SetGist) {
   const [positions, setPositions] = useState<Position[]>(() => loadPositions());
   const [storage, setStorage] = useState<'local' | 'gist'>('local');
   const [syncing, setSyncing] = useState(false);
@@ -58,6 +59,7 @@ export function usePositions(productId: ProductId, auth: Auth) {
       setStorage('local');
       setPositions(loadPositions());
       setSyncError(null);
+      setGist?.(null, null);
       return;
     }
 
@@ -75,6 +77,7 @@ export function usePositions(productId: ProductId, auth: Auth) {
         gistIdRef.current = gistId;
         setPositions(remote);
         setStorage('gist');
+        setGist?.(token, gistId);
         // Giữ bản local mirror để khi logout vẫn còn data
         savePositions(remote);
       } catch (e) {
@@ -133,5 +136,6 @@ export function usePositions(productId: ProductId, auth: Auth) {
     storage,
     syncing,
     syncError,
+    gistId: gistIdRef.current,
   };
 }

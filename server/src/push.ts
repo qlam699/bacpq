@@ -3,6 +3,7 @@ import type { CtjTick } from './ctj.js';
 import {
   listSubscriptionsForProduct,
   removeSubscription,
+  type StoredSubscription,
 } from './subscriptions.js';
 
 function formatVnd(n: number): string {
@@ -48,18 +49,32 @@ export function setPushEnabled(enabled: boolean): void {
   pushEnabled = enabled;
 }
 
+function shouldNotify(sub: StoredSubscription, tick: CtjTick): boolean {
+  if (!sub.thresholdEnabled) return true;
+  if (sub.minBuy == null && sub.maxSell == null) return true;
+  const buyHit = sub.minBuy != null && tick.buyprice >= sub.minBuy;
+  const sellHit = sub.maxSell != null && tick.sellprice <= sub.maxSell;
+  return buyHit || sellHit;
+}
+
 export async function notifyPriceChangePush(
   prev: CtjTick,
   next: CtjTick,
 ): Promise<void> {
   if (!pushEnabled) return;
-  const payload = JSON.stringify({
-    ...buildPriceNotifyPayload(prev, next),
-    tag: 'bacpq-price',
-  });
+  const basePayload = buildPriceNotifyPayload(prev, next);
   const subs = await listSubscriptionsForProduct(next.id);
   await Promise.all(
     subs.map(async (stored) => {
+      if (!shouldNotify(stored, next)) return;
+      const title = stored.thresholdEnabled
+        ? `${basePayload.title} — đạt ngưỡng!`
+        : basePayload.title;
+      const payload = JSON.stringify({
+        title,
+        body: basePayload.body,
+        tag: 'bacpq-price',
+      });
       try {
         await webpush.sendNotification(stored.subscription, payload);
       } catch (err: unknown) {

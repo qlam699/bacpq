@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { latestTick, type CtjTick } from '../lib/ctj';
+import type { Settings } from '../lib/storage';
 import {
   ensureNotifyServiceWorker,
   getNotifyPermission,
@@ -9,16 +10,26 @@ import {
   type NotifyPermission,
 } from '../lib/notify';
 
+function meetsThreshold(settings: Settings, tick: CtjTick): boolean {
+  if (!settings.thresholdEnabled) return true;
+  if (settings.minBuy == null && settings.maxSell == null) return true;
+  const buyHit = settings.minBuy != null && tick.buyprice >= settings.minBuy;
+  const sellHit = settings.maxSell != null && tick.sellprice <= settings.maxSell;
+  return buyHit || sellHit;
+}
+
 /**
  * Flash title khi tab ẩn.
  * Local notification chỉ khi chưa có Web Push (tránh double với server).
  */
-export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
+export function usePriceNotify(ticks: CtjTick[], settings: Settings) {
   const prevRef = useRef<CtjTick | null>(null);
   const primedProductRef = useRef<string | null>(null);
   const [permission, setPermission] = useState<NotifyPermission>(() =>
     getNotifyPermission(),
   );
+
+  const enabled = settings.notifyOnChange;
 
   useEffect(() => {
     void ensureNotifyServiceWorker();
@@ -50,6 +61,7 @@ export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
 
     void (async () => {
       if (await hasPushSubscription()) return;
+      if (!meetsThreshold(settings, next)) return;
       await notifyPriceChange(prev, next);
     })();
 
@@ -68,7 +80,7 @@ export function usePriceNotify(ticks: CtjTick[], enabled: boolean) {
       document.addEventListener('visibilitychange', onVis);
       window.setTimeout(restore, 8000);
     }
-  }, [ticks, enabled]);
+  }, [ticks, enabled, settings.thresholdEnabled, settings.minBuy, settings.maxSell]);
 
   return {
     permission,

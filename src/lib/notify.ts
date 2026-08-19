@@ -1,5 +1,6 @@
 import { type CtjTick, type ProductId } from './ctj';
 import { formatSignedVnd, formatVnd } from './format';
+import type { Settings } from './storage';
 
 export type NotifyPermission = NotificationPermission | 'unsupported';
 
@@ -182,6 +183,7 @@ async function fetchVapidPublicKey(): Promise<string> {
 /** Đăng ký PushManager + gửi subscription lên server. Web Push chỉ báo 1L. */
 export async function subscribeWebPush(
   productIds: ProductId[] = ['BPQ1L'],
+  thresholdOpts?: Pick<Settings, 'thresholdEnabled' | 'minBuy' | 'maxSell'>,
 ): Promise<PushSubscription> {
   if (!supportsWebPush()) {
     throw new Error('Trình duyệt không hỗ trợ Web Push');
@@ -221,12 +223,36 @@ export async function subscribeWebPush(
     body: JSON.stringify({
       subscription: sub.toJSON(),
       productIds,
+      thresholdEnabled: thresholdOpts?.thresholdEnabled ?? false,
+      minBuy: thresholdOpts?.minBuy ?? null,
+      maxSell: thresholdOpts?.maxSell ?? null,
     }),
   });
   if (!res.ok) {
     throw new Error('Không lưu được subscription trên server');
   }
   return sub;
+}
+
+/** Re-upsert thresholds on existing push subscription without re-subscribing. */
+export async function updatePushThresholds(
+  settings: Pick<Settings, 'thresholdEnabled' | 'minBuy' | 'maxSell'>,
+): Promise<void> {
+  const reg = await ensureNotifyServiceWorker();
+  if (!reg) return;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subscription: sub.toJSON(),
+      productIds: ['BPQ1L'],
+      thresholdEnabled: settings.thresholdEnabled,
+      minBuy: settings.minBuy,
+      maxSell: settings.maxSell,
+    }),
+  });
 }
 
 export async function unsubscribeWebPush(): Promise<void> {

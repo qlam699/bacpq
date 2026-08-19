@@ -1,15 +1,9 @@
+import { useState } from 'react';
 import { dayExtremes, PRODUCTS, type CtjTick, type ProductId } from '../lib/ctj';
 import { formatPct, formatSignedVnd, formatTime, formatVnd } from '../lib/format';
 import type { GithubUser } from '../lib/githubAuth';
-import {
-  notifyTest,
-  PushServiceUnavailableError,
-  subscribeWebPush,
-  supportsWebPush,
-  unsubscribeWebPush,
-} from '../lib/notify';
 import type { Settings } from '../lib/storage';
-import { GithubAuthControls } from './GithubAuthControls';
+import { SettingsPopup } from './SettingsPopup';
 
 type Props = {
   tick: CtjTick | null;
@@ -44,77 +38,19 @@ export function PriceHeader({
   notifyPermission,
   onNotifyPermissionChange,
 }: Props) {
-  async function toggleNotify() {
-    if (settings.notifyOnChange) {
-      await unsubscribeWebPush();
-      updateSettings({ notifyOnChange: false });
-      onNotifyPermissionChange?.();
-      return;
-    }
-    if (!supportsWebPush()) {
-      alert('Trình duyệt không hỗ trợ Web Push.');
-      return;
-    }
-    try {
-      await subscribeWebPush();
-      onNotifyPermissionChange?.();
-      updateSettings({ notifyOnChange: true });
-      await notifyTest(false);
-    } catch (e) {
-      onNotifyPermissionChange?.();
-      const msg = e instanceof Error ? e.message : 'Không bật được thông báo';
-      if (msg.includes('Chưa được phép') || notifyPermission === 'denied') {
-        alert(
-          'Hãy cho phép thông báo trong trình duyệt (ổ khóa URL → Thông báo) rồi bấm lại.',
-        );
-        return;
-      }
-      if (e instanceof PushServiceUnavailableError) {
-        updateSettings({ notifyOnChange: true });
-        await notifyTest(true);
-        alert(`${msg}\n\nĐã bật thông báo local khi tab đang mở.`);
-        return;
-      }
-      alert(msg);
-    }
-  }
-
-  const notifyOn = settings.notifyOnChange && notifyPermission === 'granted';
-  const notifyLabel =
-    notifyPermission === 'unsupported' || !supportsWebPush()
-      ? 'TB không hỗ trợ'
-      : notifyPermission === 'denied'
-        ? 'TB bị chặn'
-        : notifyOn
-          ? 'Tắt TB'
-          : 'Bật TB';
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const actions = (
     <div className="header-actions">
       <button
         type="button"
-        className={`btn ghost notify-btn${notifyOn ? ' notify-btn--on' : ''}`}
-        onClick={() => void toggleNotify()}
-        title={
-          notifyOn
-            ? 'Đang bật Web Push khi giá đổi (cả khi đóng tab)'
-            : 'Bật Web Push khi giá mua/bán đổi'
-        }
-        disabled={
-          notifyPermission === 'unsupported' ||
-          notifyPermission === 'denied' ||
-          !supportsWebPush()
-        }
+        className="btn ghost settings-btn"
+        onClick={() => setSettingsOpen(true)}
+        title="Cài đặt"
+        aria-label="Cài đặt"
       >
-        {notifyLabel}
+        ⚙
       </button>
-      <GithubAuthControls
-        user={githubUser}
-        storage={githubStorage}
-        syncing={githubSyncing}
-        onLogin={onGithubLogin}
-        onLogout={onGithubLogout}
-      />
       {tick ? (
         <button
           type="button"
@@ -128,6 +64,22 @@ export function PriceHeader({
     </div>
   );
 
+  const popup = (
+    <SettingsPopup
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
+      settings={settings}
+      updateSettings={updateSettings}
+      githubUser={githubUser}
+      githubStorage={githubStorage}
+      githubSyncing={githubSyncing}
+      onGithubLogin={onGithubLogin}
+      onGithubLogout={onGithubLogout}
+      notifyPermission={notifyPermission}
+      onNotifyPermissionChange={onNotifyPermissionChange}
+    />
+  );
+
   if (error && !tick) {
     return (
       <header className="price-header error">
@@ -138,6 +90,7 @@ export function PriceHeader({
         <button type="button" className="btn" onClick={onRefresh}>
           Thử lại
         </button>
+        {popup}
       </header>
     );
   }
@@ -149,6 +102,7 @@ export function PriceHeader({
           <p className="muted">{loading ? 'Đang tải giá…' : 'Chưa có dữ liệu'}</p>
           {actions}
         </div>
+        {popup}
       </header>
     );
   }
@@ -249,6 +203,7 @@ export function PriceHeader({
         </div>
       </div>
       {error ? <p className="inline-error">{error}</p> : null}
+      {popup}
     </header>
   );
 }

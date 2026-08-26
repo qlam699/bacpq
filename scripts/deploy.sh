@@ -1,28 +1,38 @@
 #!/usr/bin/env bash
-# Update app on the VPS: pull, build, restart systemd.
+# Apply release artifact on the VPS: wipe APP_DIR, extract, write env, restart systemd.
 # Runtime env: GitHub Actions secrets → /etc/bacpq.env (không dùng .env trong repo).
 # Usage:
-#   sudo bash scripts/deploy.sh
-#   sudo bash scripts/deploy.sh --no-pull
+#   sudo APP_DIR=/var/www/bacpq bash scripts/deploy.sh --release /tmp/bacpq-release.tar.gz
+#   sudo bash scripts/deploy.sh   # chỉ ghi env (nếu có) + restart khi đã có release
 set -euo pipefail
 
 APP_USER="${APP_USER:-bacpq}"
 RUNTIME_ENV="${RUNTIME_ENV:-/etc/bacpq.env}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-NO_PULL=0
-[[ "${1:-}" == "--no-pull" ]] && NO_PULL=1
+RELEASE_TAR=""
 
-run_as_app() {
-  if [[ "$(id -un)" == "${APP_USER}" ]]; then
-    "$@"
-  elif [[ "${EUID}" -eq 0 ]]; then
-    sudo -u "${APP_USER}" -H -- "$@"
-  else
-    echo "Chạy bằng user ${APP_USER} hoặc root." >&2
-    exit 1
-  fi
-}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --release)
+      RELEASE_TAR="${2:?--release cần đường dẫn tarball}"
+      shift 2
+      ;;
+    --no-pull)
+      # Giữ tương thích lời gọi cũ; không còn git pull
+      shift
+      ;;
+    *)
+      echo "Usage: $0 [--release /path/to/bacpq-release.tar.gz]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -n "${RELEASE_TAR}" ]]; then
+  APP_DIR="${APP_DIR:-/var/www/bacpq}"
+else
+  APP_DIR="${APP_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+fi
 
 write_runtime_env() {
   if [[ -z "${VAPID_PUBLIC_KEY:-}" || -z "${VAPID_PRIVATE_KEY:-}" ]]; then
@@ -52,7 +62,69 @@ app_port() {
   echo "${PORT:-8787}"
 }
 
-cd "${APP_DIR}"
+install_unit() {
+  local unit_src="${APP_DIR}/deploy/bacpq.service"
+  if [[ ! -f "${unit_src}" ]]; then
+    echo "Thiếu ${unit_src}" >&2
+    return 1
+  fi
+  local unit_tmp
+  unit_tmp="$(mktemp)"
+  sed "s|__APP_DIR__|${APP_DIR}|g" "${unit_src}" > "${unit_tmp}"
+  install -m 644 "${unit_tmp}" /etc/systemd/system/bacpq.service
+  rm -f "${unit_tmp}"
+  systemctl daemon-reload
+  systemctl enable bacpq
+}
+
+restart_service() {
+  if [[ ! -f /etc/systemd/system/bacpq.service ]]; then
+    echo "==> Chưa có systemd unit — chạy: sudo bash scripts/setup-vps-webinoly.sh" >&2
+    return 1
+  fi
+  echo "==> systemctl restart bacpq"
+  systemctl daemon-reload
+  systemctl restart bacpq
+  systemctl --no-pager --full status bacpq || true
+}
+
+apply_release() {
+  if [[ "${EUID}" -ne 0 ]]; then
+    echo "Cần root để --release (wipe ${APP_DIR})." >&2
+    exit 1
+  fi
+  if [[ ! -f "${RELEASE_TAR}" ]]; then
+    echo "Không thấy tarball: ${RELEASE_TAR}" >&2
+    exit 1
+  fi
+
+  if [[ -f /etc/systemd/system/bacpq.service ]]; then
+    echo "==> systemctl stop bacpq"
+    systemctl stop bacpq || true
+  fi
+
+  echo "==> Xóa sạch ${APP_DIR} (bỏ bản git clone / release cũ)"
+  rm -rf "${APP_DIR}"
+  mkdir -p "${APP_DIR}"
+  echo "==> Giải nén ${RELEASE_TAR} → ${APP_DIR}"
+  tar -xzf "${RELEASE_TAR}" -C "${APP_DIR}"
+
+  if id -u "${APP_USER}" >/dev/null 2>&1; then
+    chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
+  fi
+
+  echo "==> Cài / cập nhật systemd unit"
+  install_unit
+}
+
+if [[ "${EUID}" -ne 0 ]]; then
+  echo "Chạy bằng root: sudo bash scripts/deploy.sh ..." >&2
+  exit 1
+fi
+
+if [[ -n "${RELEASE_TAR}" ]]; then
+  apply_release
+fi
 
 if write_runtime_env; then
   echo "==> Ghi ${RUNTIME_ENV} từ env (GitHub Actions)"
@@ -64,28 +136,12 @@ else
   exit 1
 fi
 
-if [[ "${NO_PULL}" -eq 0 && -d .git ]]; then
-  echo "==> git pull"
-  run_as_app git -C "${APP_DIR}" pull --ff-only
+if [[ ! -f "${APP_DIR}/server/dist/index.js" ]]; then
+  echo "Thiếu ${APP_DIR}/server/dist/index.js — cần deploy bằng --release từ GitHub Actions artifact." >&2
+  exit 1
 fi
 
-echo "==> npm ci + build"
-run_as_app bash -lc "cd '${APP_DIR}' && npm ci && npm run build"
-
-if [[ -f /etc/systemd/system/bacpq.service ]]; then
-  echo "==> systemctl restart bacpq"
-  if [[ "${EUID}" -eq 0 ]]; then
-    systemctl daemon-reload
-    systemctl restart bacpq
-    systemctl --no-pager --full status bacpq || true
-  else
-    sudo systemctl daemon-reload
-    sudo systemctl restart bacpq
-    sudo systemctl --no-pager --full status bacpq || true
-  fi
-else
-  echo "==> Chưa có systemd unit — chạy: sudo bash scripts/setup-vps-webinoly.sh"
-fi
+restart_service
 
 PORT_CHECK="$(app_port)"
 echo "==> health"

@@ -147,19 +147,15 @@ Web Push on Linux: use **Google Chrome** or **Firefox**. Chromium/ungoogled/Brav
 
 DNS: **A** record `bac.codayroi.com` → VPS IP. Webinoly is pre-installed. On Ubuntu (root):
 
-App code: `/var/www/bacpq` (Actions **auto-clones** if missing). Repo must be **public**, or the VPS must have a deploy key for `git clone`/`pull`.
+App code: `/var/www/bacpq` — each deploy **wipes** this directory and extracts the Actions artifact (no `git clone` / `npm run build` on the VPS). Subscriptions data: `/var/lib/bacpq` (kept).
 
 Env: GitHub Secrets (`VAPID_*`, `VPS_*`) — no `.env` on the VPS.
 
-To deploy: **push** to `main` (GitHub Actions deploys). Without Actions, on the VPS:
+To deploy: **push** to `main` (GitHub Actions builds, SCPs the tarball, restarts).
 
-```bash
-sudo bash /var/www/bacpq/scripts/deploy.sh
-```
+### GitHub Actions (push `main` → build artifact + deploy VPS)
 
-### GitHub Actions (push `main` → build + deploy VPS)
-
-Workflow: `.github/workflows/deploy-vps.yml` — CI runs `npm run build` on GitHub, then SSH to the VPS and runs `deploy.sh`.
+Workflow: `.github/workflows/deploy-vps.yml` — CI runs `npm run build` on GitHub, packs `bacpq-release.tar.gz` (`dist`, `server/dist`, production `node_modules`, …), SCPs to the VPS, then `deploy.sh --release` (wipe `/var/www/bacpq` → extract → restart).
 
 **1. SSH key (your machine or GitHub):**
 
@@ -169,7 +165,7 @@ ssh-keygen -t ed25519 -C "github-actions-bacpq" -f ./bacpq-deploy -N ""
 ssh-copy-id -i ./bacpq-deploy.pub USER@VPS_IP
 ```
 
-SSH user needs passwordless `sudo` for `deploy.sh` / `systemctl restart bacpq` (or use `root`).
+SSH user needs passwordless `sudo` for `deploy.sh` / `systemctl` (or use `root`).
 
 **2. GitHub repo → Settings → Secrets and variables → Actions**
 
@@ -184,10 +180,6 @@ SSH user needs passwordless `sudo` for `deploy.sh` / `systemctl restart bacpq` (
 | `VAPID_SUBJECT`     | `mailto:you@example.com`                      |
 
 Variables (optional): `PORT` (8787), `DATA_DIR` (`/var/lib/bacpq`), `POLL_MS` (2000).
-
-Variable (optional): to change the VPS path, edit `cd /var/www/bacpq` in the workflow.
-
-**3. Repo on the VPS must support** `git pull` (public, or a read-only [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) if private).
 
 Change branch: edit `branches:` in the workflow (e.g. `production`). `workflow_dispatch` allows manual Deploy from the Actions tab.
 

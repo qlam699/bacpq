@@ -145,21 +145,15 @@ Web Push trên Linux: dùng **Google Chrome** hoặc **Firefox**. Chromium/ungoo
 
 DNS: record **A** `bac.codayroi.com` → IP VPS. Webinoly đã cài sẵn. Trên Ubuntu (root):
 
-Code app: `/var/www/bacpq` (Actions **tự clone** nếu chưa có). Repo phải **public**, hoặc trên VPS đã gắn deploy key để `git clone`/`pull` được.
+App code: `/var/www/bacpq` — mỗi lần deploy Actions **xóa sạch** thư mục này rồi giải nén artifact (không còn `git clone` / `npm run build` trên VPS). Data subscriptions: `/var/lib/bacpq` (giữ nguyên).
 
 Env: Secrets trên GitHub (`VAPID_*`, `VPS_*`) — không dùng `.env` trên VPS.
 
-Cập nhật code: **push** `main` là đủ (GitHub Actions deploy). Chưa gắn Actions thì trên VPS:
+Cập nhật code: **push** `main` là đủ (GitHub Actions build + SCP + restart).
 
-```bash
-sudo bash /var/www/bacpq/scripts/deploy.sh
-```
+### GitHub Actions (push `main` → build artifact + deploy VPS)
 
-
-
-### GitHub Actions (push `main` → build + deploy VPS)
-
-Workflow: `.github/workflows/deploy-vps.yml` — CI `npm run build` trên GitHub, rồi SSH vào VPS chạy `deploy.sh`.
+Workflow: `.github/workflows/deploy-vps.yml` — CI `npm run build` trên GitHub, đóng gói `bacpq-release.tar.gz` (`dist`, `server/dist`, production `node_modules`, …), SCP lên VPS, `deploy.sh --release` (wipe `/var/www/bacpq` → giải nén → restart).
 
 **1. SSH key (máy bạn hoặc GitHub):**
 
@@ -169,7 +163,7 @@ ssh-keygen -t ed25519 -C "github-actions-bacpq" -f ./bacpq-deploy -N ""
 ssh-copy-id -i ./bacpq-deploy.pub USER@VPS_IP
 ```
 
-User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl restart bacpq` (hoặc dùng `root`).
+User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl` (hoặc dùng `root`).
 
 **2. Repo GitHub → Settings → Secrets and variables → Actions**
 
@@ -186,10 +180,6 @@ User SSH cần `sudo` không mật khẩu cho `deploy.sh` / `systemctl restart b
 
 
 Variables (optional): `PORT` (8787), `DATA_DIR` (`/var/lib/bacpq`), `POLL_MS` (2000).
-
-Variable (optional): đổi path trên VPS thì sửa `cd /var/www/bacpq` trong workflow.
-
-**3. Repo trên VPS phải** `git pull` **được** (public, hoặc [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) read-only nếu private).
 
 Đổi branch: sửa `branches:` trong workflow (ví dụ `production`). `workflow_dispatch` cho phép bấm Deploy tay trên tab Actions.
 

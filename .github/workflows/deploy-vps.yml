@@ -11,7 +11,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Chỉ kiểm tra build trên CI — bản chạy production build lại trên VPS
   build:
     runs-on: ubuntu-latest
     steps:
@@ -22,6 +21,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Production node_modules
+        run: rm -rf node_modules && npm ci --omit=dev
+      - name: Pack release
+        run: |
+          tar -czf bacpq-release.tar.gz \
+            dist \
+            server/dist \
+            node_modules \
+            package.json \
+            package-lock.json \
+            deploy \
+            scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bacpq-release
+          path: bacpq-release.tar.gz
+          retention-days: 7
 
   deploy:
     needs: build
@@ -34,6 +50,11 @@ jobs:
       DATA_DIR: ${{ vars.DATA_DIR || '/var/lib/bacpq' }}
       POLL_MS: ${{ vars.POLL_MS || '2000' }}
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bacpq-release
+          path: release
+
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
@@ -42,7 +63,20 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy over SSH
+      - name: Copy release to VPS
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ]; then
+            echo "Thiếu VPS_HOST hoặc VPS_USER"
+            exit 1
+          fi
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            release/bacpq-release.tar.gz \
+            "$SSH_USER@$SSH_HOST:/tmp/bacpq-release.tar.gz"
+
+      - name: Deploy on VPS
         env:
           SSH_HOST: ${{ secrets.VPS_HOST }}
           SSH_USER: ${{ secrets.VPS_USER }}
@@ -53,35 +87,27 @@ jobs:
           fi
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
             "$SSH_USER@$SSH_HOST" \
-            "export PORT='${{ env.PORT }}' VAPID_PUBLIC_KEY='${{ env.VAPID_PUBLIC_KEY }}' VAPID_PRIVATE_KEY='${{ env.VAPID_PRIVATE_KEY }}' VAPID_SUBJECT='${{ env.VAPID_SUBJECT }}' DATA_DIR='${{ env.DATA_DIR }}' POLL_MS='${{ env.POLL_MS }}' BRANCH='${{ github.ref_name }}' REPO='https://github.com/${{ github.repository }}.git'; bash -s" << 'EOF'
+            "export PORT='${{ env.PORT }}' VAPID_PUBLIC_KEY='${{ env.VAPID_PUBLIC_KEY }}' VAPID_PRIVATE_KEY='${{ env.VAPID_PRIVATE_KEY }}' VAPID_SUBJECT='${{ env.VAPID_SUBJECT }}' DATA_DIR='${{ env.DATA_DIR }}' POLL_MS='${{ env.POLL_MS }}'; bash -s" << 'EOF'
           set -euo pipefail
 
+          RELEASE=/tmp/bacpq-release.tar.gz
+          UNPACK=/tmp/bacpq-unpack
           APP_DIR=/var/www/bacpq
 
-          if [ ! -d "$APP_DIR/.git" ]; then
-            echo "==> Clone $APP_DIR"
-            sudo mkdir -p /var/www
-            # Lần trước fail giữa chừng → folder tồn tại nhưng chưa phải git repo
-            if [ -e "$APP_DIR" ]; then
-              sudo rm -rf "$APP_DIR"
-            fi
-            sudo git clone -b "$BRANCH" "$REPO" "$APP_DIR"
-          fi
-
-          # Sync code trước setup — để VPS nhận script mới (vd. fix apt)
-          echo "==> git sync $BRANCH"
-          sudo git -C "$APP_DIR" fetch origin
-          sudo git -C "$APP_DIR" checkout "$BRANCH"
-          sudo git -C "$APP_DIR" pull --ff-only
+          rm -rf "$UNPACK"
+          mkdir -p "$UNPACK"
+          tar -xzf "$RELEASE" -C "$UNPACK"
 
           if [ ! -f /etc/systemd/system/bacpq.service ]; then
-            echo "==> setup-vps-webinoly.sh"
-            sudo bash "$APP_DIR/scripts/setup-vps-webinoly.sh"
-          else
-            sudo chown -R bacpq:bacpq "$APP_DIR" || true
+            echo "==> First-time: seed APP_DIR + setup-vps-webinoly.sh"
+            sudo mkdir -p /var/www
+            sudo rm -rf "$APP_DIR"
+            sudo mkdir -p "$APP_DIR"
+            sudo tar -xzf "$RELEASE" -C "$APP_DIR"
+            sudo --preserve-env=PORT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DATA_DIR,POLL_MS \
+              bash "$APP_DIR/scripts/setup-vps-webinoly.sh"
           fi
 
-          # Site Webinoly = thao tác một lần, không fallback trong CI
           if [ ! -e /etc/nginx/sites-available/bac.codayroi.com ]; then
             echo "WARN: chưa có site bac.codayroi.com — app vẫn deploy :8787"
             echo "  Tạo một lần trên VPS:"
@@ -89,7 +115,11 @@ jobs:
             echo "  sudo site bac.codayroi.com -ssl=on"
           fi
 
-          echo "==> deploy.sh --no-pull"
+          echo "==> deploy.sh --release (wipe APP_DIR + extract + restart)"
           sudo --preserve-env=PORT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DATA_DIR,POLL_MS \
-            bash "$APP_DIR/scripts/deploy.sh" --no-pull
+            env APP_DIR="$APP_DIR" \
+            bash "$UNPACK/scripts/deploy.sh" --release "$RELEASE"
+
+          rm -rf "$UNPACK"
+          rm -f "$RELEASE"
           EOF

@@ -2,10 +2,11 @@
 # First-time VPS setup khi Nginx/SSL đã do Webinoly quản lý.
 # Không apt-install nginx/certbot, không ghi đè /etc/nginx/sites-available.
 #
-# Usage (as root, from repo):
+# Usage (as root, từ cây release đã giải nén tại APP_DIR):
 #   sudo bash scripts/setup-vps-webinoly.sh
 #   sudo SKIP_SSL=1 bash scripts/setup-vps-webinoly.sh   # chưa trỏ DNS
 #   sudo SKIP_SITE=1 bash scripts/setup-vps-webinoly.sh  # chỉ Node + systemd
+# App code: GitHub Actions build artifact → SCP → deploy.sh --release (không git clone / npm build trên VPS).
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-bac.codayroi.com}"
@@ -51,21 +52,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SITE_NGINX="/etc/nginx/sites-available/${DOMAIN}"
 
-echo "==> Repo: ${APP_DIR}"
+echo "==> App dir: ${APP_DIR}"
 echo "==> Domain: ${DOMAIN}"
 echo "==> Proxy: 127.0.0.1:${PORT} (Webinoly, không đụng nginx conf tay)"
 
 export DEBIAN_FRONTEND=noninteractive
 # Ondrej PHP / Webinoly PPA đôi khi đổi Label → cần --allow-releaseinfo-change
 apt-get update -y --allow-releaseinfo-change
-apt-get install -y git curl ca-certificates
+apt-get install -y curl ca-certificates
 
 if ! command -v node >/dev/null 2>&1 || ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 20)'; then
   echo "==> Cài Node.js 22"
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
-echo "==> Node $(node -v) / npm $(npm -v)"
+echo "==> Node $(node -v)"
 
 if ! id -u "${APP_USER}" >/dev/null 2>&1; then
   adduser --system --group --home "${APP_DIR}" --shell /usr/sbin/nologin "${APP_USER}"
@@ -81,11 +82,18 @@ rm -f "${UNIT_TMP}"
 systemctl daemon-reload
 systemctl enable bacpq
 
-if [[ -f /etc/bacpq.env ]]; then
-  bash "${APP_DIR}/scripts/deploy.sh"
+# Không build trên VPS — chỉ restart nếu đã có artifact (server/dist + node_modules)
+if [[ -f "${APP_DIR}/server/dist/index.js" && -d "${APP_DIR}/node_modules" ]]; then
+  if [[ -f /etc/bacpq.env ]] || [[ -n "${VAPID_PUBLIC_KEY:-}" ]]; then
+    echo "==> Restart từ artifact đã có (không npm build)"
+    bash "${APP_DIR}/scripts/deploy.sh"
+  else
+    echo "==> Chưa có /etc/bacpq.env — env lấy từ GitHub Actions Secrets."
+    echo "    Thêm VAPID_* rồi push main (hoặc Run workflow) để deploy lần đầu."
+  fi
 else
-  echo "==> Chưa có /etc/bacpq.env — env lấy từ GitHub Actions Secrets."
-  echo "    Thêm VAPID_* rồi push main (hoặc Run workflow) để deploy lần đầu."
+  echo "==> Chưa có release artifact trong ${APP_DIR}."
+  echo "    Push main / Run workflow — CI build + SCP tarball, rồi deploy.sh --release."
 fi
 
 if [[ "${SKIP_SITE}" != "1" ]]; then
@@ -126,7 +134,7 @@ echo "==> Setup Webinoly xong."
 echo "    Local:  curl -sS http://127.0.0.1:${PORT}/api/health"
 echo "    Public: https://${DOMAIN}/api/health"
 echo "    Log:    journalctl -u bacpq -f"
-echo "    Deploy: sudo bash ${APP_DIR}/scripts/deploy.sh"
+echo "    Deploy: GitHub Actions SCP artifact → sudo bash scripts/deploy.sh --release /tmp/bacpq-release.tar.gz"
 echo
 echo "SSE: proxy Webinoly timeout ~300s — client sẽ reconnect. Nếu stream bị đơ,"
 echo "không sửa sites-available tay; thêm location /api/ (proxy_buffering off) qua"

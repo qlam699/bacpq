@@ -1,8 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   GITHUB_TOKEN_CREATE_URL,
   type GithubUser,
 } from '../lib/githubAuth';
+import {
+  formatDigitGroups,
+  formatGroupedInt,
+  parseGroupedInt,
+} from '../lib/format';
 import {
   notifyTest,
   PushServiceUnavailableError,
@@ -43,6 +48,18 @@ export function SettingsPopup({
   const [token, setToken] = useState('');
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [minBuyText, setMinBuyText] = useState('');
+  const [maxSellText, setMaxSellText] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setMinBuyText(
+      settings.minBuy != null ? formatGroupedInt(settings.minBuy) : '',
+    );
+    setMaxSellText(
+      settings.maxSell != null ? formatGroupedInt(settings.maxSell) : '',
+    );
+  }, [open, settings.minBuy, settings.maxSell]);
 
   async function handleGithubSubmit(e: FormEvent) {
     e.preventDefault();
@@ -107,9 +124,26 @@ export function SettingsPopup({
     });
   }
 
-  function handleMinBuyChange(val: string) {
-    const n = val === '' ? null : Number(val);
-    const minBuy = n != null && Number.isFinite(n) && n > 0 ? n : null;
+  function parsePositivePrice(val: string): number | null {
+    const n = parseGroupedInt(val);
+    return n !== null && n > 0 ? n : null;
+  }
+
+  function onMinBuyInput(raw: string) {
+    const formatted = formatDigitGroups(raw);
+    setMinBuyText(formatted);
+    updateSettings({ minBuy: parsePositivePrice(formatted) });
+  }
+
+  function onMaxSellInput(raw: string) {
+    const formatted = formatDigitGroups(raw);
+    setMaxSellText(formatted);
+    updateSettings({ maxSell: parsePositivePrice(formatted) });
+  }
+
+  function handleMinBuyBlur() {
+    const minBuy = parsePositivePrice(minBuyText);
+    setMinBuyText(minBuy != null ? formatGroupedInt(minBuy) : '');
     updateSettings({ minBuy });
     void updatePushThresholds({
       thresholdEnabled: settings.thresholdEnabled,
@@ -118,9 +152,9 @@ export function SettingsPopup({
     });
   }
 
-  function handleMaxSellChange(val: string) {
-    const n = val === '' ? null : Number(val);
-    const maxSell = n != null && Number.isFinite(n) && n > 0 ? n : null;
+  function handleMaxSellBlur() {
+    const maxSell = parsePositivePrice(maxSellText);
+    setMaxSellText(maxSell != null ? formatGroupedInt(maxSell) : '');
     updateSettings({ maxSell });
     void updatePushThresholds({
       thresholdEnabled: settings.thresholdEnabled,
@@ -128,6 +162,11 @@ export function SettingsPopup({
       maxSell,
     });
   }
+
+  const thresholdsConflict =
+    settings.minBuy != null &&
+    settings.maxSell != null &&
+    settings.maxSell >= settings.minBuy;
 
   const notifyOn = settings.notifyOnChange && notifyPermission === 'granted';
   const canNotify =
@@ -277,38 +316,48 @@ export function SettingsPopup({
                       Giá shop mua vào tối thiểu (Buy ≥) (Bạn muốn bán bạc khi giá nhiêu)
                     </span>
                     <input
-                      type="number"
-                      placeholder="VD: 2300000"
-                      value={settings.minBuy ?? ''}
-                      onBlur={(e) => handleMinBuyChange(e.target.value)}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        const n = v === '' ? null : Number(v);
-                        updateSettings({
-                          minBuy:
-                            n != null && Number.isFinite(n) && n > 0 ? n : null,
-                        });
-                      }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="VD: 2.400.000"
+                      className={
+                        thresholdsConflict
+                          ? 'threshold-field__input--invalid'
+                          : undefined
+                      }
+                      value={minBuyText}
+                      onBlur={handleMinBuyBlur}
+                      onChange={(e) => onMinBuyInput(e.target.value)}
                     />
+                    {thresholdsConflict ? (
+                      <p className="inline-error">
+                        Phải lớn hơn giá bên dưới
+                      </p>
+                    ) : null}
                   </label>
                   <label className="threshold-field">
                     <span className="label">
                       Giá shop bán ra tối đa (Sell ≤) (Bạn muốn mua bạc khi giá nhiêu)
                     </span>
                     <input
-                      type="number"
-                      placeholder="VD: 2400000"
-                      value={settings.maxSell ?? ''}
-                      onBlur={(e) => handleMaxSellChange(e.target.value)}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        const n = v === '' ? null : Number(v);
-                        updateSettings({
-                          maxSell:
-                            n != null && Number.isFinite(n) && n > 0 ? n : null,
-                        });
-                      }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="VD: 2.300.000"
+                      className={
+                        thresholdsConflict
+                          ? 'threshold-field__input--invalid'
+                          : undefined
+                      }
+                      value={maxSellText}
+                      onBlur={handleMaxSellBlur}
+                      onChange={(e) => onMaxSellInput(e.target.value)}
                     />
+                    {thresholdsConflict ? (
+                      <p className="inline-error">
+                        Phải nhỏ hơn giá bên trên
+                      </p>
+                    ) : null}
                   </label>
                   <p className="muted">
                     Chỉ thông báo khi ít nhất 1 điều kiện đạt (OR).

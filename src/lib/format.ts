@@ -2,6 +2,26 @@ export function formatVnd(n: number): string {
   return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + '₫';
 }
 
+/** 2300000 → "2.300.000" (dấu chấm hàng nghìn vi-VN) */
+export function formatGroupedInt(n: number): string {
+  return new Intl.NumberFormat('vi-VN').format(Math.round(n));
+}
+
+/** Chỉ lấy chữ số rồi gắn dấu chấm hàng nghìn khi gõ. */
+export function formatDigitGroups(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** "2.300.000" / "2300000" → number; rỗng → null */
+export function parseGroupedInt(raw: string): number | null {
+  const cleaned = raw.replace(/[.\s,]/g, '').trim();
+  if (cleaned === '') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function formatSignedVnd(n: number): string {
   const sign = n > 0 ? '+' : '';
   return sign + formatVnd(n);

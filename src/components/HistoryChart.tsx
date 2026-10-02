@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Chart as ChartJS,
   LineController,
@@ -105,6 +105,7 @@ export function HistoryChart() {
   const [duration, setDuration] = useState<HistoryDuration | null>('7D');
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(() => toInputDate(new Date()));
+  const [copied, setCopied] = useState(false);
 
   const query: HistoryQuery = useMemo(() => {
     if (duration) return { type: unitType, duration };
@@ -116,6 +117,22 @@ export function HistoryChart() {
   }, [unitType, duration, fromDate, toDate]);
 
   const { data, loading, error } = useHistoryPrices(query);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [copied]);
+
+  async function copyHistoryResponse() {
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopied(true);
+    } catch {
+      /* clipboard may be denied */
+    }
+  }
 
   const rawPoints = data?.points;
   const points = useMemo(
@@ -187,6 +204,15 @@ export function HistoryChart() {
             onClick={() => setUnitType(3)}
           >
             Kilogram
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={!data || loading}
+            onClick={() => void copyHistoryResponse()}
+            title="Copy JSON response khoảng thời gian hiện tại"
+          >
+            {copied ? 'Đã copy' : 'Copy data'}
           </button>
         </div>
       </div>

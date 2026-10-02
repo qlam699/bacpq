@@ -134,7 +134,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
       const pnl =
         currentBuy == null
           ? null
-          : calcPositionPnl(p.buyPrice, p.quantity, currentBuy);
+          : calcPositionPnl(p.buyPrice, 1, currentBuy);
       const status =
         currentBuy == null
           ? ''
@@ -145,7 +145,7 @@ export function PriceChart({ ticks, positions, currentBuy }: Props) {
         formatVnd(p.buyPrice),
         `SL ${p.quantity}`,
         status,
-        pnl ? formatSignedVnd(pnl.pnl) : null,
+        pnl ? formatSignedVnd(pnl.pnl) + "/L" : null,
       ]
         .filter(Boolean)
         .join(' · ');

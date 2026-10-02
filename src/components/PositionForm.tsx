@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import type { ProductId } from '../lib/ctj';
-import { formatDateTimeLocal, localInputToIso } from '../lib/format';
+import {
+  formatDateTimeLocal,
+  formatDigitGroups,
+  localInputToIso,
+  parseGroupedInt,
+} from '../lib/format';
 
 type Props = {
   productId: ProductId;
@@ -13,12 +18,6 @@ type Props = {
   }) => void;
 };
 
-function parseVndInput(raw: string): number {
-  // Accept "2.264.000" or "2264000" or "2,264,000"
-  const cleaned = raw.replace(/[.\s,]/g, '').trim();
-  return Number(cleaned);
-}
-
 export function PositionForm({ productId, onAdd }: Props) {
   const [buyPrice, setBuyPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -29,9 +28,9 @@ export function PositionForm({ productId, onAdd }: Props) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const priceNum = parseVndInput(buyPrice);
+    const priceNum = parseGroupedInt(buyPrice);
     const qty = Number(quantity);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) return;
+    if (priceNum == null || priceNum <= 0) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
 
     onAdd({
@@ -57,9 +56,9 @@ export function PositionForm({ productId, onAdd }: Props) {
           Giá mua
           <input
             inputMode="numeric"
-            placeholder="2264000"
+            placeholder="2.264.000"
             value={buyPrice}
-            onChange={(e) => setBuyPrice(e.target.value)}
+            onChange={(e) => setBuyPrice(formatDigitGroups(e.target.value))}
             required
           />
         </label>

@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { latestTick } from './lib/ctj';
+import { formatMarketTitle } from './lib/format';
 import { useGithubAuth } from './hooks/useGithubAuth';
 import { usePriceNotify } from './hooks/usePriceNotify';
 import { usePriceStream } from './hooks/usePriceStream';
@@ -33,6 +34,13 @@ export default function App() {
 
   const tick = useMemo(() => latestTick(ticks), [ticks]);
   const currentBuy = tick?.buyprice ?? null;
+
+  useEffect(() => {
+    if (!tick) return;
+    if (document.visibilityState === 'visible') {
+      document.title = formatMarketTitle(tick.buyprice, tick.sellprice);
+    }
+  }, [tick]);
 
   return (
     <div className="app">

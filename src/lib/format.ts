@@ -2,6 +2,10 @@ export function formatVnd(n: number): string {
   return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + '₫';
 }
 
+export function formatMarketTitle(buyPrice: number, sellPrice: number): string {
+  return `${formatVnd(sellPrice)} - ${formatVnd(buyPrice)}`;
+}
+
 /** 2300000 → "2.300.000" (dấu chấm hàng nghìn vi-VN) */
 export function formatGroupedInt(n: number): string {
   return new Intl.NumberFormat('vi-VN').format(Math.round(n));

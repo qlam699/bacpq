@@ -37,9 +37,7 @@ export default function App() {
 
   useEffect(() => {
     if (!tick) return;
-    if (document.visibilityState === 'visible') {
-      document.title = formatMarketTitle(tick.buyprice, tick.sellprice);
-    }
+    document.title = formatMarketTitle(tick.buyprice, tick.sellprice);
   }, [tick]);
 
   return (

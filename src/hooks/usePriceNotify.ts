@@ -25,10 +25,14 @@ function meetsThreshold(settings: Settings, tick: CtjTick): boolean {
 export function usePriceNotify(ticks: CtjTick[], settings: Settings) {
   const prevRef = useRef<CtjTick | null>(null);
   const primedProductRef = useRef<string | null>(null);
+  const latestTickRef = useRef<CtjTick | null>(null);
+  const titleRestoreRef = useRef<(() => void) | null>(null);
+  const titleTimeoutRef = useRef<number | null>(null);
   const [permission, setPermission] = useState<NotifyPermission>(() =>
     getNotifyPermission(),
   );
 
+  latestTickRef.current = latestTick(ticks);
   const enabled = settings.notifyOnChange;
 
   useEffect(() => {
@@ -38,6 +42,15 @@ export function usePriceNotify(ticks: CtjTick[], settings: Settings) {
   useEffect(() => {
     setPermission(getNotifyPermission());
   }, [enabled]);
+
+  useEffect(() => () => {
+    if (titleRestoreRef.current) {
+      document.removeEventListener('visibilitychange', titleRestoreRef.current);
+    }
+    if (titleTimeoutRef.current != null) {
+      window.clearTimeout(titleTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const next = latestTick(ticks);
@@ -68,17 +81,28 @@ export function usePriceNotify(ticks: CtjTick[], settings: Settings) {
     if (document.visibilityState === 'hidden') {
       const buyDiff = next.buyprice - prev.buyprice;
       const arrow = buyDiff > 0 ? '↑' : buyDiff < 0 ? '↓' : '→';
-      const original = document.title;
+      if (titleRestoreRef.current) {
+        document.removeEventListener('visibilitychange', titleRestoreRef.current);
+      }
+      if (titleTimeoutRef.current != null) {
+        window.clearTimeout(titleTimeoutRef.current);
+      }
       document.title = `${arrow} ${next.buyprice.toLocaleString('vi-VN')}₫ · CTJ`;
       const restore = () => {
-        document.title = original;
+        const current = latestTickRef.current;
+        if (current) {
+          document.title = `${current.sellprice.toLocaleString('vi-VN')}₫ - ${current.buyprice.toLocaleString('vi-VN')}₫`;
+        }
         document.removeEventListener('visibilitychange', onVis);
+        titleRestoreRef.current = null;
+        titleTimeoutRef.current = null;
       };
       const onVis = () => {
         if (document.visibilityState === 'visible') restore();
       };
+      titleRestoreRef.current = onVis;
       document.addEventListener('visibilitychange', onVis);
-      window.setTimeout(restore, 8000);
+      titleTimeoutRef.current = window.setTimeout(restore, 8000);
     }
   }, [ticks, enabled, settings.thresholdEnabled, settings.minBuy, settings.maxSell]);
 
